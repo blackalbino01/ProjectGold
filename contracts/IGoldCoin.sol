@@ -10,7 +10,7 @@ interface IGoldCoin {
 
     //
     function withdrawCollateral(address _collateralType, uint256 _amount) external;
-    function liquidate() external;
+    // function liquidate() external;
 
     function addCollateralType(address _collateralType) external;
 
