@@ -68,24 +68,30 @@ contract Chrysus is ERC20, IGoldCoin {
         //multiply CHC price * CHC total supply
         uint256 valueCHC = uint(priceCHC) * totalSupply();
 
+        address collateralType;
+
+        int collateralPrice;
         //declare collateral sum
         uint256 totalcollateralValue;
-        //declare collateral amount
-        uint256 singleCollateralAmount;
         //declare usd price
         uint256 singleCollateralValue;
 
         //for each collateral type...
         for (uint i; i < approvedTokens.length; i++) {
+
+            collateralType = approvedTokens[i];
             //read oracle price
-            approvedCollateral[approvedTokens[i]]
+            (, collateralPrice, , ,) = approvedCollateral[collateralType].oracle.latestRoundData();
 
             //multiply collateral amount in contract * oracle price to get USD price
+            singleCollateralValue = approvedCollateral[collateralType].balance * uint(collateralPrice);
             //add to sum
+            totalcollateralValue += singleCollateralValue;
 
         }
 
         //divide value of CHC * 100 by value of collateral sum / 10000
+        return valueCHC * 100 / totalcollateralValue / 1000;
 
     }
 
@@ -101,20 +107,34 @@ contract Chrysus is ERC20, IGoldCoin {
         //catch token deposits
         userDeposits[msg.sender][_collateralType].amount += _amount - tokenFee;
 
+        //incrase balance in approvedColateral mapping
+        approvedCollateral[_collateralType].balance += _amount - tokenFee;
+
         //read CHC/USD oracle
+        (, int priceCHC, , ,) = oracleCHC.latestRoundData();
 
         //read XAU/USD oracle
+        (, int priceXAU, , ,) = oracleXAU.latestRoundData();
 
         //create CHC/XAU ratio
+        uint256 ratio = uint(priceCHC * 100 / priceXAU / 10000);
 
-        //multiply amount minted by CHC/XAU ratio
+        //read collateral price to calculate amount of CHC to mint
+        (, int priceCollateral, , ,) = approvedCollateral[_collateralType].oracle.latestRoundData();
+        uint256 amountToMint = (_amount - tokenFee) * uint(priceCollateral) * 100 / uint(priceCHC) / 10000;
+
+        //divide amount minted by CHC/XAU ratio
+        amountToMint = amountToMint * 100 / ratio / 10000;
 
         //update collateralization ratio
+        collateralRatio();
 
         //approve and transfer from token (if address is not address 0)
-
+        if (_collateralType != address(0)) {
+            IERC20(_collateralType).approve(address(this), _amount);
+        }
         //mint new tokens (mint _amount * CHC/XAU ratio)
-        _mint();
+        _mint(msg.sender, amountToMint);
 
 
     }
