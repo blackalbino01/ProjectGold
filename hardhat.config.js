@@ -22,11 +22,14 @@ module.exports = {
   solidity: "0.8.4",
   networks: {
     hardhat: {
+      forking: {
+        url: "https://eth-mainnet.alchemyapi.io/v2/7dW8KCqWwKa1vdaitq-SxmKfxWZ4yPG6"
+      },
     },
-    rinkeby: {
-      url: process.env.NODE_URL,
-      accounts: [privateKey1, privateKey2,]
-    }
+    // rinkeby: {
+    //   url: process.env.NODE_URL,
+    //   accounts: [privateKey1, privateKey2,]
+    // }
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_KEY

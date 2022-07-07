@@ -6,7 +6,7 @@ import "contracts/IGoldCoin.sol";
 import "contracts/ISwap.sol";
 import "contracts/IStabilityModule.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "contracts/AggregatorV3Interface.sol";
 import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
 import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
 
@@ -23,11 +23,12 @@ contract Chrysus is ERC20, IGoldCoin {
     AggregatorV3Interface oracleXAU;
 
     ISwapRouter public immutable swapRouter;
+    ISwap public swapSolution;
+    IStabilityModule public stabilityModule;
 
     address governance;
     address treasury;
-    address swapSolution;
-    address stabilityModule;
+    address auction;
 
     struct Collateral {
         bool approved;
@@ -37,8 +38,8 @@ contract Chrysus is ERC20, IGoldCoin {
     }
 
     struct Deposit {
-        uint256 amount;
-        uint256 timestamp;
+        uint256 deposited;
+        uint256 minted;
     }
 
     mapping(address=>mapping(address=>Deposit)) userDeposits; //user -> token address -> Deposit struct
@@ -48,7 +49,8 @@ contract Chrysus is ERC20, IGoldCoin {
     constructor(address _daiAddress, address _oracleDAI, address _oracleETH,
                 address _oracleCHC, address _oracleXAU,
                 address _governance,
-                ISwapRouter _swapRouter)
+                ISwapRouter _swapRouter, address _swapSolution,
+                address _stabilityModule)
                  ERC20("Chrysus", "CHC") {
 
         liquidationRatio = 110;
@@ -72,6 +74,11 @@ contract Chrysus is ERC20, IGoldCoin {
         governance = _governance;
 
         swapRouter = _swapRouter;
+
+        swapSolution = ISwap(_swapSolution);
+        stabilityModule = IStabilityModule(_stabilityModule);
+
+
 
     }
 
@@ -136,9 +143,9 @@ contract Chrysus is ERC20, IGoldCoin {
         // userTokenDeposits[msg.sender][address(0)].amount += msg.value - ethFee;
 
         //catch token deposits
-        userDeposits[msg.sender][_collateralType].amount += _amount - tokenFee;
+        userDeposits[msg.sender][_collateralType].deposited += _amount - tokenFee;
 
-        //incrase balance in approvedColateral mapping
+        //increase balance in approvedColateral mapping
         approvedCollateral[_collateralType].balance += _amount - tokenFee;
 
 
@@ -168,44 +175,66 @@ contract Chrysus is ERC20, IGoldCoin {
         //mint new tokens (mint _amount * CHC/XAU ratio)
         _mint(msg.sender, amountToMint);
 
+        userDeposits[msg.sender][_collateralType].minted += amountToMint;
+
+
 
     }
     
     function liquidate(address _collateralType) external {
 
-        // //require collateralizaiton ratio is under liquidation ratio
+        //require collateralizaiton ratio is under liquidation ratio
+        require(collateralizationRatio < liquidationRatio, "cannot liquidate position");
 
-        // //sell collteral on swap solution above price of XAU
+        (, int priceCollateral, , ,) = approvedCollateral[_collateralType].oracle.latestRoundData();
+        (, int priceXAU, , ,) = oracleXAU.latestRoundData();
 
-        // //sell collateral on uniswap above price of XAU
+        uint256 amountOut = userDeposits[msg.sender][_collateralType].minted * uint(priceCollateral) * 100 / uint(priceXAU) / 10000;
+        uint256 amountInMaximum = userDeposits[msg.sender][_collateralType].minted;
 
-        // TransferHelper.safeTransferFrom(_collateralType,
-        // msg.sender,
-        // address(this),
-        // userDeposits[msg.sender][_collateralType].amount
-        // );
 
-        // TransferHelper.safeApprove(_collateralType, address(swapRouter), userDeposits[msg.sender][_collateralType].amount);
+        //sell collateral on swap solution at or above price of XAU
+        uint256 amountIn = swapSolution.swapExactOutput(
+            address(this),
+            _collateralType,
+            3000,
+            msg.sender,
+            block.timestamp,
+            amountOut,
+            amountInMaximum
+        );
 
-        // // Naively set amountOutMinimum to 0. In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
-        // // We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
-        // ISwapRouter.ExactInputSingleParams memory params =
-        //     ISwapRouter.ExactInputSingleParams({
-        //         tokenIn: DAI,
-        //         tokenOut: WETH9,
-        //         fee: 3000,
-        //         recipient: msg.sender,
-        //         deadline: block.timestamp,
-        //         amountIn: amountIn,
-        //         amountOutMinimum: 0,
-        //         sqrtPriceLimitX96: 0
-        //     });
+        //sell collateral on uniswap at or above price of XAU
 
-        // // The call to `exactInputSingle` executes the swap.
-        // amountOut = swapRouter.exactInputSingle(params);
+        TransferHelper.safeApprove(address(this), address(swapRouter), amountInMaximum);
+
+        amountOut = userDeposits[msg.sender][_collateralType].minted * uint(priceCollateral) * 100 / uint(priceXAU) / 10000;
+
+        ISwapRouter.ExactOutputSingleParams memory params =
+            ISwapRouter.ExactOutputSingleParams({
+                tokenIn: address(this),
+                tokenOut: _collateralType,
+                fee: 3000,
+                recipient: msg.sender,
+                deadline: block.timestamp,
+                amountOut: amountOut,
+                amountInMaximum: amountInMaximum,
+                sqrtPriceLimitX96: 0
+            });
+
+        amountIn = swapRouter.exactOutputSingle(params);
+
+
+        if (amountIn < amountInMaximum) {
+            TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
+            TransferHelper.safeTransfer(address(this), msg.sender, amountInMaximum - amountIn);
+
+            amountInMaximum = amountIn;
+        }
         
-
-        // //auction off the rest
+        //auction off the rest
+        approve(auction, amountInMaximum);
+        transferFrom(msg.sender, auction, amountInMaximum);
     }
 
     //withdraws collateral in exchange for a given amount of CHC tokens
@@ -221,8 +250,14 @@ contract Chrysus is ERC20, IGoldCoin {
         //divide by collateral to USD price
         uint256 collateralToReturn = _amount * uint(priceCHC) * 100 / uint(priceCollateral) / 10000;
 
+        //decrease collateral balance at user's account
+        userDeposits[msg.sender][_collateralType].deposited -= _amount;
+
         //burn the CHC amount
         _burn(msg.sender, _amount);
+
+        userDeposits[msg.sender][_collateralType].minted -= _amount;
+
 
         //update collateralization ratio
         collateralizationRatio = collateralRatio();
@@ -254,8 +289,8 @@ contract Chrysus is ERC20, IGoldCoin {
             if (collateralType == address(0)) {
                 
                 (bool success, ) = treasury.call{value: approvedCollateral[collateralType].fees * 3000 / 10000}("");
-                (success, ) = swapSolution.call{value: approvedCollateral[collateralType].fees * 2000 / 10000}("");
-                (success, ) = stabilityModule.call{value: approvedCollateral[collateralType].fees * 5000 / 10000}("");
+                (success, ) = address(swapSolution).call{value: approvedCollateral[collateralType].fees * 2000 / 10000}("");
+                (success, ) = address(stabilityModule).call{value: approvedCollateral[collateralType].fees * 5000 / 10000}("");
 
                 approvedCollateral[collateralType].fees = 0;
 
@@ -263,11 +298,11 @@ contract Chrysus is ERC20, IGoldCoin {
                 //transfer as token if token
                 transferFrom(address(this), treasury, approvedCollateral[collateralType].fees * 3000 / 10000);
 
-                IERC20(collateralType).approve(swapSolution, approvedCollateral[collateralType].fees * 2000 / 10000);
-                ISwap(swapSolution).addLiquidity(collateralType, approvedCollateral[collateralType].fees * 2000 / 10000);
+                IERC20(collateralType).approve(address(swapSolution), approvedCollateral[collateralType].fees * 2000 / 10000);
+                swapSolution.addLiquidity(collateralType, approvedCollateral[collateralType].fees * 2000 / 10000);
 
-                IERC20(collateralType).approve(stabilityModule, approvedCollateral[collateralType].fees * 5000 / 10000);
-                IStabilityModule(swapSolution).addTokens(collateralType, approvedCollateral[collateralType].fees * 2000 / 10000);
+                IERC20(collateralType).approve(address(stabilityModule), approvedCollateral[collateralType].fees * 5000 / 10000);
+                stabilityModule.addTokens(collateralType, approvedCollateral[collateralType].fees * 2000 / 10000);
 
                 approvedCollateral[collateralType].fees = 0;
             }
