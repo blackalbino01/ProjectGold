@@ -1,9 +1,14 @@
 pragma solidity ^0.8.0;
 
-interface ISwap {
+contract MockSwap {
+    mapping(address => uint256) liquidity;
+
     function addLiquidity(address _collateralType, uint256 _amount)
         external
-        payable;
+        payable
+    {
+        liquidity[_collateralType] += _amount;
+    }
 
     function swapExactOutput(
         address tokenIn,
@@ -13,5 +18,7 @@ interface ISwap {
         uint256 deadline,
         uint256 amountOut,
         uint256 amountInMaximum
-    ) external returns (uint256);
+    ) external returns (uint256) {
+        return 0;
+    }
 }

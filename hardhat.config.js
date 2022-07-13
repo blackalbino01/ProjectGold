@@ -26,10 +26,12 @@ module.exports = {
         url: "https://eth-mainnet.alchemyapi.io/v2/7dW8KCqWwKa1vdaitq-SxmKfxWZ4yPG6"
       },
     },
-    // rinkeby: {
-    //   url: process.env.NODE_URL,
-    //   accounts: [privateKey1, privateKey2,]
-    // }
+    rinkeby: {
+      accounts: {
+        mnemonic: "miss swift penalty skate expose today own stuff crew fold glare pond energy abuse cup"
+      },
+      url: process.env.NODE_URL
+    }
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_KEY
