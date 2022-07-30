@@ -9,24 +9,37 @@ const hre = require("hardhat");
 async function main() {
 
   let accounts = await ethers.getSigners()
-
-  governance = accounts[1]
+  team = accounts[1]
   treasury = accounts[2]
   auction = accounts[3]
+
+  const Governance = await hre.ethers.getContractFactory("Governance")
+  governance = await Governance.deploy(
+    team.address
+  )
+  await governance.deployed()
+
+  const MockLending = await hre.ethers.getContractFactory("MockLending")
+  let mockLending = await MockLending.deploy(
+    governance.address
+  )
+  await mockLending.deployed()
+
+  const MockSwap = await hre.ethers.getContractFactory("MockSwap")
+  let mockSwap = await MockSwap.deploy()
+  await mockSwap.deployed()
+  console.log("mockSwap: ", mockSwap.address)
 
   console.log("gov ", governance.address)
   console.log("treasury ", treasury.address)
   console.log("auction ", auction.address)
 
   const MockStabilityModule = await hre.ethers.getContractFactory("MockStabilityModule")
-  mockStabilityModule = await MockStabilityModule.deploy()
+  mockStabilityModule = await MockStabilityModule.deploy(
+    governance.address
+  )
   await mockStabilityModule.deployed()
   console.log("mockStabilityModule: ", mockStabilityModule.address)
-
-  const MockSwap = await hre.ethers.getContractFactory("MockSwap")
-  let mockSwap = await MockSwap.deploy()
-  await mockSwap.deployed()
-  console.log("mockSwap: ", mockSwap.address)
 
   const MockOracle = await hre.ethers.getContractFactory("MockOracle")
   let mockOracle = await MockOracle.deploy()
@@ -51,6 +64,12 @@ async function main() {
   );
 
   await chrysus.deployed();
+
+  await governance.connect(team).init(
+    chrysus.address,
+    mockSwap.address,
+    mockLending.address
+  )
 
   console.log("Chrysus Stablecoin deployed to:", chrysus.address);
   console.log("chc/usd feed signer", accounts[0].address)

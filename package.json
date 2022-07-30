@@ -16,6 +16,7 @@
     "@openzeppelin/cli": "^2.8.2",
     "@openzeppelin/contracts": "^4.6.0",
     "@uniswap/v3-periphery": "^1.4.1",
-    "dotenv": "^16.0.1"
+    "dotenv": "^16.0.1",
+    "hardhat-interface-generator": "0.0.6"
   }
 }

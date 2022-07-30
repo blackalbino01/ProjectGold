@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
 import "contracts/Math.sol";
-import "contracts/ISwap.sol";
-import "contracts/IStabilityModule.sol";
+import "contracts/interfaces/ISwap.sol";
+import "contracts/interfaces/IStabilityModule.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "contracts/AggregatorV3Interface.sol";
+import "contracts/interfaces/AggregatorV3Interface.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
@@ -93,6 +93,7 @@ contract Chrysus is DSMath, ERC20 {
         swapSolution = ISwap(_swapSolution);
         stabilityModule = IStabilityModule(_stabilityModule);
     }
+
 
     function addCollateralType(
         address _collateralType,

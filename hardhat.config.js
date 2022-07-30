@@ -1,4 +1,5 @@
 require("@nomiclabs/hardhat-waffle");
+require("hardhat-interface-generator");
 require("@nomiclabs/hardhat-etherscan");
 require('dotenv').config()
 
