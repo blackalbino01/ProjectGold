@@ -18,12 +18,15 @@ async function main() {
     team.address
   )
   await governance.deployed()
+  console.log("governance ", governance.address)
+  console.log("team ", team.address)
 
   const MockLending = await hre.ethers.getContractFactory("MockLending")
   let mockLending = await MockLending.deploy(
     governance.address
   )
   await mockLending.deployed()
+  console.log("lending ", mockLending.address)
 
   const MockSwap = await hre.ethers.getContractFactory("MockSwap")
   let mockSwap = await MockSwap.deploy()

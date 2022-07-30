@@ -151,4 +151,12 @@ describe("Chrysus tests", function () {
     await chrysus.withdrawFees()
 
   })
+
+  it("vote", async function() {
+
+  })
+
+  it("mints set amount daily", async function() {
+
+  })
 });
