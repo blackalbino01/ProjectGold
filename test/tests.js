@@ -12,53 +12,82 @@ describe("Chrysus tests", function () {
   const DAI_HOLDER = "0x6262998ced04146fa42253a5c0af90ca02dfd2a3"
 
 
-  let chrysus, mockOracle, mockSwap, mockStabilityModule
+  let chrysus, mockOracle, mockSwap, mockStabilityModule, governance
   let dai
   let accounts
-  let governance, treasury, auction
+  let treasury, auction
   let daiHolder
 
   beforeEach(async function () {
 
     accounts = await ethers.getSigners()
-    governance = accounts[1]
+    team = accounts[1]
     treasury = accounts[2]
     auction = accounts[3]
-
-    const MockStabilityModule = await hre.ethers.getContractFactory("MockStabilityModule")
-    mockStabilityModule = await MockStabilityModule.deploy()
-    await mockStabilityModule.deployed()
-    console.log("mockStabilityModule: ", mockStabilityModule.address)
-
-
+  
+    const Governance = await hre.ethers.getContractFactory("Governance")
+    governance = await Governance.deploy(
+      team.address
+    )
+    await governance.deployed()
+    console.log("governance ", governance.address)
+    console.log("team ", team.address)
+  
+    const MockLending = await hre.ethers.getContractFactory("MockLending")
+    let mockLending = await MockLending.deploy(
+      governance.address
+    )
+    await mockLending.deployed()
+    console.log("lending ", mockLending.address)
+  
     const MockSwap = await hre.ethers.getContractFactory("MockSwap")
     mockSwap = await MockSwap.deploy()
     await mockSwap.deployed()
     console.log("mockSwap: ", mockSwap.address)
-
+  
+    console.log("gov ", governance.address)
+    console.log("treasury ", treasury.address)
+    console.log("auction ", auction.address)
+  
+    const MockStabilityModule = await hre.ethers.getContractFactory("MockStabilityModule")
+    mockStabilityModule = await MockStabilityModule.deploy(
+      governance.address
+    )
+    await mockStabilityModule.deployed()
+    console.log("mockStabilityModule: ", mockStabilityModule.address)
+  
     const MockOracle = await hre.ethers.getContractFactory("MockOracle")
     mockOracle = await MockOracle.deploy()
     await mockOracle.deployed()
     console.log("mockOracle: ", mockOracle.address)
-
+  
     // We get the contract to deploy
     const Chrysus = await hre.ethers.getContractFactory("Chrysus");
     chrysus = await Chrysus.deploy(
-      DAI, //dai on mainnet
-      DAI_FEED, //dai/usd feed on mainnet
-      ETH_FEED, //eth/usd feed on mainnet
+      DAI, //dai on rinkeby
+      DAI_FEED, //dai/usd feed on rinkeby
+      ETH_FEED, //eth/usd feed on rinkeby
       mockOracle.address, //chc/usd signer
-      GOLD_FEED, //xau/usd feed on mainnet
+      GOLD_FEED, //xau/usd feed on rinkeby
       governance.address, //governance signer
       treasury.address,
       auction.address,
-      UNI_ROUTER, //uniswap router on mainnet (same on rinkeby),
+      "0xE592427A0AEce92De3Edee1F18E0157C05861564", //uniswap router on rinkeby (same on mainnet),
       mockSwap.address,
       mockStabilityModule.address // stability module
-
-  );
-
-  await chrysus.deployed();
+  
+    );
+  
+    await chrysus.deployed();
+  
+    await governance.connect(team).init(
+      chrysus.address,
+      mockSwap.address,
+      mockLending.address
+    )
+  
+    console.log("Chrysus Stablecoin deployed to:", chrysus.address);
+    console.log("chc/usd feed signer", accounts[0].address)
 
   await network.provider.request({
     method: "hardhat_impersonateAccount",
@@ -78,9 +107,9 @@ describe("Chrysus tests", function () {
 
   it("liquidate", async function () {
 
-    let userDeposit = BigInt(1742E18)
+    let userDeposit = BigInt(1769E18)
 
-    await mockOracle.setValue(BigInt(1742E18))
+    await mockOracle.setValue(BigInt(1769E18))
 
     await dai.connect(daiHolder).approve(chrysus.address, userDeposit)
 
@@ -95,9 +124,9 @@ describe("Chrysus tests", function () {
 
   it("depositCollateral", async function () {
 
-    await mockOracle.setValue(BigInt(1742E18))
+    await mockOracle.setValue(BigInt(1769E18))
 
-    let userDeposit = BigInt(1742E18)
+    let userDeposit = BigInt(1769E18)
 
     await dai.connect(daiHolder).approve(chrysus.address, userDeposit)
 
@@ -118,8 +147,8 @@ describe("Chrysus tests", function () {
 
   it("withdrawCollateral", async function () {
 
-    await mockOracle.setValue(BigInt(1742E18))
-    let userDeposit = BigInt(1742E18)
+    await mockOracle.setValue(BigInt(1769E18))
+    let userDeposit = BigInt(1769E18)
     await dai.connect(daiHolder).approve(chrysus.address, userDeposit)
     await chrysus.connect(daiHolder).depositCollateral(DAI, userDeposit)
     let amountMinted = await chrysus.balanceOf(DAI_HOLDER)
@@ -138,8 +167,8 @@ describe("Chrysus tests", function () {
 
   it("withdrawFees", async function () {
 
-    await mockOracle.setValue(BigInt(1742E18))
-    let userDeposit = BigInt(1742E18)
+    await mockOracle.setValue(BigInt(1769E18))
+    let userDeposit = BigInt(1769E18)
     await dai.connect(daiHolder).approve(chrysus.address, userDeposit)
     await chrysus.connect(daiHolder).depositCollateral(DAI, userDeposit)
     let amountMinted = await chrysus.balanceOf(DAI_HOLDER)
