@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
-import "contracts/Math.sol";
+import "contracts/libraries/Math.sol";
 import "contracts/interfaces/ISwap.sol";
 import "contracts/interfaces/IStabilityModule.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -10,7 +10,10 @@ import "contracts/interfaces/AggregatorV3Interface.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
-contract Chrysus is DSMath, ERC20 {
+contract Chrysus is ERC20 {
+
+    using DSMath for uint;
+
     uint256 public liquidationRatio;
     uint256 public collateralizationRatio;
     uint256 public ethBalance;
@@ -153,7 +156,7 @@ contract Chrysus is DSMath, ERC20 {
             return 110e6;
         }
 
-        return wdiv(totalcollateralValue, valueCHC);
+        return DSMath.wdiv(totalcollateralValue, valueCHC);
     }
 
     function depositCollateral(address _collateralType, uint256 _amount)
@@ -161,8 +164,8 @@ contract Chrysus is DSMath, ERC20 {
         payable
     {
         //10% of initial collateral collected as fee
-        uint256 ethFee = div(msg.value, 10);
-        uint256 tokenFee = div(_amount, 10);
+        uint256 ethFee = DSMath.div(msg.value, 10);
+        uint256 tokenFee = DSMath.div(_amount, 10);
 
         //increase fee balance
         approvedCollateral[address(0)].fees += ethFee;
@@ -188,19 +191,19 @@ contract Chrysus is DSMath, ERC20 {
         (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
 
         //create CHC/XAU ratio
-        uint256 ratio = div(uint256(priceCHC), uint256(priceXAU));
+        uint256 ratio = DSMath.div(uint256(priceCHC), uint256(priceXAU));
 
         //read collateral price to calculate amount of CHC to mint
         (, int256 priceCollateral, , , ) = approvedCollateral[_collateralType]
             .oracle
             .latestRoundData();
-        uint256 amountToMint = wdiv(
+        uint256 amountToMint = DSMath.wdiv(
             (_amount - tokenFee) * uint256(priceCollateral),
             uint256(priceCHC)
         );
 
         //divide amount minted by CHC/XAU ratio
-        amountToMint = div(
+        amountToMint = DSMath.div(
             amountToMint * 10000,
             ratio * approvedCollateral[_collateralType].collateralRequirement
         );
@@ -318,7 +321,7 @@ contract Chrysus is DSMath, ERC20 {
             .oracle
             .latestRoundData();
         //divide by collateral to USD price
-        uint256 collateralToReturn = div(_amount * uint256(priceCollateral),
+        uint256 collateralToReturn = DSMath.div(_amount * uint256(priceCollateral),
             uint256(priceCHC));
 
         //decrease collateral balance at user's account
@@ -358,15 +361,15 @@ contract Chrysus is DSMath, ERC20 {
             //send as ether if ether
             if (collateralType == address(0)) {
                 (bool success, ) = treasury.call{
-                    value: wdiv(wmul(approvedCollateral[collateralType].fees, 3000), 
+                    value: DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 3000), 
                         10000)
                 }("");
                 (success, ) = address(swapSolution).call{
-                    value: wdiv(wmul(approvedCollateral[collateralType].fees, 2000), 
+                    value: DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 2000), 
                         10000)
                 }("");
                 (success, ) = address(stabilityModule).call{
-                    value: wdiv(wmul(approvedCollateral[collateralType].fees, 5000), 
+                    value: DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 5000), 
                         10000)
                 }("");
 
@@ -378,29 +381,29 @@ contract Chrysus is DSMath, ERC20 {
                 //transfer as token if token
                 IERC20(collateralType).transfer(
                     treasury,
-                    wdiv(wmul(approvedCollateral[collateralType].fees, 3000), 
+                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 3000), 
                         10000)
                 );
 
                 IERC20(collateralType).approve(
                     address(swapSolution),
-                    wdiv(wmul(approvedCollateral[collateralType].fees, 2000), 
+                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 2000), 
                         10000)
                 );
                 swapSolution.addLiquidity(
                     collateralType,
-                    wdiv(wmul(approvedCollateral[collateralType].fees, 2000), 
+                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 2000), 
                         10000)
                 );
 
                 IERC20(collateralType).approve(
                     address(stabilityModule),
-                    wdiv(wmul(approvedCollateral[collateralType].fees, 5000), 
+                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 5000), 
                         10000)
                 );
                 stabilityModule.addTokens(
                     collateralType,
-                    wdiv(wmul(approvedCollateral[collateralType].fees, 5000), 
+                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 5000), 
                         10000)
                 );
 

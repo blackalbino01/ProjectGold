@@ -1,13 +1,16 @@
 pragma solidity ^0.8.0;
 
-import "contracts/Math.sol";
+import "contracts/libraries/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "contracts/interfaces/IChrysus.sol";
 import "contracts/interfaces/ISwap.sol";
 import "contracts/interfaces/IStabilityModule.sol";
 import "contracts/interfaces/ILending.sol";
 
-contract Governance is DSMath, ERC20 {
+contract Governance is ERC20 {
+
+    using DSMath for uint;
+    
     IChrysus chrysus;
     ISwap swapSolution;
     IStabilityModule stabilityModule;
