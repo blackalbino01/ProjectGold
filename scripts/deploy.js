@@ -9,6 +9,7 @@ const hre = require("hardhat");
 async function main() {
 
   let accounts = await ethers.getSigners()
+  console.log(accounts[0].address)
   team = accounts[1]
   treasury = accounts[2]
   auction = accounts[3]
@@ -28,10 +29,10 @@ async function main() {
   await mockLending.deployed()
   console.log("lending ", mockLending.address)
 
-  const MockSwap = await hre.ethers.getContractFactory("MockSwap")
-  let mockSwap = await MockSwap.deploy()
-  await mockSwap.deployed()
-  console.log("mockSwap: ", mockSwap.address)
+  const Swap = await hre.ethers.getContractFactory("Swap")
+  let swap = await Swap.deploy(governance.address)
+  await swap.deployed()
+  console.log("swap solution: ", swap.address)
 
   console.log("gov ", governance.address)
   console.log("treasury ", treasury.address)
@@ -61,7 +62,7 @@ async function main() {
     treasury.address,
     auction.address,
     "0xE592427A0AEce92De3Edee1F18E0157C05861564", //uniswap router on rinkeby (same on mainnet),
-    mockSwap.address,
+    swap.address,
     mockStabilityModule.address // stability module
 
   );
@@ -70,7 +71,7 @@ async function main() {
 
   await governance.connect(team).init(
     chrysus.address,
-    mockSwap.address,
+    swap.address,
     mockLending.address
   )
 
