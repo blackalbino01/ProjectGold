@@ -6,7 +6,7 @@ import './libraries/UQ112x112.sol';
 import './interfaces/ISwapFactory.sol';
 import './interfaces/IUniswapV2Callee.sol';
 import "./SwapERC20.sol";
-import "./interfaces/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 contract Pair is IUniswapV2Pair, SwapERC20 {
@@ -42,6 +42,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
         _blockTimestampLast = blockTimestampLast;
     }
 
+    // slither-disable-next-line incorrect-equality
     function _safeTransfer(address token, address to, uint value) private {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'UniswapV2: TRANSFER_FAILED');
@@ -70,7 +71,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
         token1 = _token1;
     }
 
-    // update reserves and, on the first call per block, price accumulators
+    // slither-disable-next-line weak-prng
     function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1) private {
         require(balance0 <= type(uint112).max && balance1 <= type(uint112).max, 'UniswapV2: OVERFLOW');
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
@@ -108,6 +109,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
+    //slither-disable-next-line incorrect-equality
     function mint(address to) external  lock returns (uint liquidity) {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
@@ -132,6 +134,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
+    // slither-disable-next-line reentrancy-no-eth
     function burn(address to) external  lock returns (uint amount0, uint amount1) {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         address _token0 = token0;                                // gas savings
@@ -157,6 +160,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
+    // slither-disable-next-line reentrancy-no-eth
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external override  lock {
         require(amount0Out > 0 || amount1Out > 0, 'UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT');
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings

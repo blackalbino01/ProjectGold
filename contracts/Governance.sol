@@ -10,6 +10,8 @@ import "contracts/interfaces/ILending.sol";
 contract Governance is ERC20 {
 
     using DSMath for uint;
+
+    bool initted;
     
     IChrysus chrysus;
     ISwap swapSolution;
@@ -18,7 +20,7 @@ contract Governance is ERC20 {
 
     address public team;
 
-    uint256 public lastMintTimestamp;
+    uint256 public lastMintTimestamp = 0;
     uint256 public voteCount;
 
     struct Vote {
@@ -56,6 +58,11 @@ contract Governance is ERC20 {
         _;
     }
 
+    modifier mustInit() {
+        require(initted);
+        _;
+    }
+
     constructor(address _team) ERC20("Chrysus Governance", "CGT") {
         _mint(_team, 72e25);
 
@@ -68,11 +75,13 @@ contract Governance is ERC20 {
         address _lending
     ) external {
         require(msg.sender == team, "can only be initted by team");
+        require(initted = false);
         chrysus = IChrysus(_chrysus);
         swapSolution = ISwap(_swapSolution);
         lending = ILending(_lending);
+        initted = true;
     }
-
+    //slither-disable-next-line divide-before-multiply
     function mintDaily() external {
         uint256 numDays = (block.timestamp - lastMintTimestamp) / 86400;
 
@@ -87,13 +96,15 @@ contract Governance is ERC20 {
 
         //100,000 minted to a reserve
         _mint(address(this), 1e23 * numDays);
-    }
 
+        lastMintTimestamp = block.timestamp;
+    }
+    //slither-disable-next-line uninitialized-state
     function proposeVote(
         address _contract,
         bytes4 _function,
         bytes memory _data
-    ) external onlyVoter {
+    ) external onlyVoter mustInit {
         require(
             stabilityModule.getGovernanceStake(msg.sender).amount >
                 stabilityModule.getTotalPoolAmount() / 10,
@@ -110,7 +121,7 @@ contract Governance is ERC20 {
         _thisVote.data = _data;
     }
 
-    function executeVote(uint256 _voteCount) external onlyVoter {
+    function executeVote(uint256 _voteCount) external onlyVoter mustInit {
         //75 percent of pool needs to vote
 
         Vote storage v = voteInfo[_voteCount];
@@ -150,7 +161,7 @@ contract Governance is ERC20 {
         uint256 _voteCount,
         bool _supports,
         bool _abstains
-    ) external onlyVoter {
+    ) external onlyVoter mustInit {
         require(_voteCount <= voteCount, "Vote does not exist");
         Vote storage v = voteInfo[_voteCount];
         require(v.tallyTime == 0, "Vote has already been tallied");

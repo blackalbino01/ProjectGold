@@ -19,7 +19,8 @@ contract Swap is ISwapFactory {
     function allPairsLength() external view override returns (uint) {
         return allPairs.length;
     }
-
+    
+    // slither-disable-next-line reentrancy-no-eth
     function createPair(address tokenA, address tokenB) external override returns (address pair) {
         require(msg.sender == feeToSetter);
         require(tokenA != tokenB, 'Swap: IDENTICAL_ADDRESSES');

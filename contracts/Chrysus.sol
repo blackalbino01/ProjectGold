@@ -137,7 +137,7 @@ contract Chrysus is ERC20 {
         uint256 singleCollateralValue;
 
         //for each collateral type...
-        for (uint256 i; i < approvedTokens.length; i++) {
+        for (uint256 i = 0; i < approvedTokens.length; i++) {
             collateralType = approvedTokens[i];
             //read oracle price
             (, collateralPrice, , , ) = approvedCollateral[collateralType]
@@ -159,6 +159,7 @@ contract Chrysus is ERC20 {
         return DSMath.wdiv(totalcollateralValue, valueCHC);
     }
 
+    // slither-disable-next-line divide-before-multiply reentrancy-no-eth
     function depositCollateral(address _collateralType, uint256 _amount)
         public
         payable
@@ -211,18 +212,20 @@ contract Chrysus is ERC20 {
         //update collateralization ratio
         collateralizationRatio = collateralRatio();
 
-        //approve and transfer from token (if address is not address 0)
-        if (_collateralType != address(0)) {
-            IERC20(_collateralType).transferFrom(
-                msg.sender,
-                address(this),
-                _amount
-            );
-        }
         //mint new tokens (mint _amount * CHC/XAU ratio)
         _mint(msg.sender, amountToMint);
 
         userDeposits[msg.sender][_collateralType].minted += amountToMint;
+
+        //approve and transfer from token (if address is not address 0)
+        if (_collateralType != address(0)) {
+            bool success = IERC20(_collateralType).transferFrom(
+                msg.sender,
+                address(this),
+                _amount
+            );
+            require(success);
+        }
     }
 
     function liquidate(address _collateralType) external {
@@ -346,6 +349,7 @@ contract Chrysus is ERC20 {
         }
     }
 
+    // slither-disable-next-line arbitrary-send
     function withdrawFees() external {
         //30% to treasury
         //20% to swap solution for liquidity
@@ -355,59 +359,65 @@ contract Chrysus is ERC20 {
 
         address collateralType;
 
-        for (uint256 i; i < approvedTokens.length; i++) {
+        for (uint256 i = 0; i < approvedTokens.length; i++) {
             collateralType = approvedTokens[i];
+
+            uint256 _fees = approvedCollateral[collateralType].fees;
+
+            approvedCollateral[collateralType].fees = 0;
 
             //send as ether if ether
             if (collateralType == address(0)) {
                 (bool success, ) = treasury.call{
-                    value: DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 3000), 
+                    value: DSMath.wdiv(DSMath.wmul(_fees, 3000), 
                         10000)
                 }("");
+                require(success);
                 (success, ) = address(swapSolution).call{
-                    value: DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 2000), 
+                    value: DSMath.wdiv(DSMath.wmul(_fees, 2000), 
                         10000)
                 }("");
+                require(success);
                 (success, ) = address(stabilityModule).call{
-                    value: DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 5000), 
+                    value: DSMath.wdiv(DSMath.wmul(_fees, 5000), 
                         10000)
                 }("");
+                require(success);
 
-                approvedCollateral[collateralType].fees = 0;
             } else {
 
-                console.log("fees", approvedCollateral[collateralType].fees);
-                console.log("balance", IERC20(collateralType).balanceOf(address(this)));
                 //transfer as token if token
-                IERC20(collateralType).transfer(
+                bool success = IERC20(collateralType).transfer(
                     treasury,
-                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 3000), 
+                    DSMath.wdiv(DSMath.wmul(_fees, 3000), 
                         10000)
                 );
+                require(success);
 
-                IERC20(collateralType).approve(
+                success = IERC20(collateralType).approve(
                     address(swapSolution),
-                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 2000), 
+                    DSMath.wdiv(DSMath.wmul(_fees, 2000), 
                         10000)
                 );
+                require(success);
                 swapSolution.addLiquidity(
                     collateralType,
-                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 2000), 
+                    DSMath.wdiv(DSMath.wmul(_fees, 2000), 
                         10000)
                 );
 
-                IERC20(collateralType).approve(
+                success = IERC20(collateralType).approve(
                     address(stabilityModule),
-                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 5000), 
+                    DSMath.wdiv(DSMath.wmul(_fees, 5000), 
                         10000)
                 );
+                require(success);
                 stabilityModule.addTokens(
                     collateralType,
-                    DSMath.wdiv(DSMath.wmul(approvedCollateral[collateralType].fees, 5000), 
+                    DSMath.wdiv(DSMath.wmul(_fees, 5000), 
                         10000)
                 );
 
-                approvedCollateral[collateralType].fees = 0;
             }
         }
     }

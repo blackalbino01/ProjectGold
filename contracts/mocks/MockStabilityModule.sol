@@ -25,7 +25,7 @@ contract MockStabilityModule {
 
     function addTokens(address _collateralType, uint256 _amount)
         external
-        payable {
+         {
 
             balances[_collateralType] += _amount;
 
@@ -50,8 +50,8 @@ contract MockStabilityModule {
         s.endTime = block.timestamp;
         s.withdrawAmount = _amount;
 
-        IGovernance(governance).transferFrom(msg.sender, address(this), _amount);
-
+        bool success = IGovernance(governance).transferFrom(msg.sender, address(this), _amount);
+        require(success);
     }
 
     function withdrawStake() external {
@@ -60,14 +60,14 @@ contract MockStabilityModule {
 
         require(block.timestamp - s.endTime > 30 days);
 
-        IGovernance(governance).transfer(msg.sender, s.withdrawAmount);
-
         s.amount -= s.withdrawAmount;
         s.endTime = block.timestamp;
         totalPoolAmount -= s.withdrawAmount;
 
         s.withdrawAmount = 0;
 
+        bool success = IGovernance(governance).transfer(msg.sender, s.withdrawAmount);
+        require(success);
     }
 
     function getGovernanceStake(address _staker) external view returns(Stake memory){

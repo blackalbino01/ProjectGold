@@ -17,6 +17,7 @@
     "@openzeppelin/contracts": "^4.6.0",
     "@uniswap/v3-periphery": "^1.4.1",
     "dotenv": "^16.0.1",
-    "hardhat-interface-generator": "0.0.6"
+    "hardhat-interface-generator": "0.0.6",
+    "slither": "^0.2.2"
   }
 }
