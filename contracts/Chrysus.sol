@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
@@ -62,6 +62,15 @@ contract Chrysus is ERC20 {
         address _swapSolution,
         address _stabilityModule
     ) ERC20("Chrysus", "CHC") {
+        require(_daiAddress != address(0));
+        require(_oracleDAI != address(0));
+        require(_oracleETH != address(0));
+        require(_oracleXAU != address(0));
+        require(_governance != address(0));
+        require(_treasury != address(0));
+        require(_auction != address(0));
+        require(_swapSolution != address(0));
+        require(_stabilityModule != address(0));
         liquidationRatio = 110e6;
 
         //add Dai as approved collateral

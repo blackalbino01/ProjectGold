@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity >0.8.3;
 
 import './interfaces/IUniswapV2Pair.sol';
@@ -67,6 +68,8 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
     // called once by the factory at time of deployment
     function initialize(address _token0, address _token1) external override  {
         require(msg.sender == factory, 'UniswapV2: FORBIDDEN'); // sufficient check
+        require(_token0 != address(0));
+        require(_token1 != address(0));
         token0 = _token0;
         token1 = _token1;
     }

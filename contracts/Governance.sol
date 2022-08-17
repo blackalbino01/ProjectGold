@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "contracts/libraries/Math.sol";
@@ -64,6 +65,7 @@ contract Governance is ERC20 {
     }
 
     constructor(address _team) ERC20("Chrysus Governance", "CGT") {
+        require(_team != address(0));
         _mint(_team, 72e25);
 
         team = _team;
