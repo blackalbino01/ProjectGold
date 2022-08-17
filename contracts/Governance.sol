@@ -77,7 +77,7 @@ contract Governance is ERC20 {
         address _lending
     ) external {
         require(msg.sender == team, "can only be initted by team");
-        require(initted = false);
+        require(initted == false);
         chrysus = IChrysus(_chrysus);
         swapSolution = ISwap(_swapSolution);
         lending = ILending(_lending);

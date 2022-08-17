@@ -12,7 +12,7 @@ describe("Chrysus tests", function () {
   const DAI_HOLDER = "0x6262998ced04146fa42253a5c0af90ca02dfd2a3"
 
 
-  let chrysus, mockOracle, mockSwap, mockStabilityModule, governance
+  let chrysus, mockOracle, swap, mockStabilityModule, governance, mockLending
   let dai
   let accounts
   let treasury, auction
@@ -21,6 +21,7 @@ describe("Chrysus tests", function () {
   beforeEach(async function () {
 
     accounts = await ethers.getSigners()
+    console.log(accounts[0].address)
     team = accounts[1]
     treasury = accounts[2]
     auction = accounts[3]
@@ -34,16 +35,16 @@ describe("Chrysus tests", function () {
     console.log("team ", team.address)
   
     const MockLending = await hre.ethers.getContractFactory("MockLending")
-    let mockLending = await MockLending.deploy(
+    mockLending = await MockLending.deploy(
       governance.address
     )
     await mockLending.deployed()
     console.log("lending ", mockLending.address)
   
-    const MockSwap = await hre.ethers.getContractFactory("MockSwap")
-    mockSwap = await MockSwap.deploy()
-    await mockSwap.deployed()
-    console.log("mockSwap: ", mockSwap.address)
+    const Swap = await hre.ethers.getContractFactory("Swap")
+    swap = await Swap.deploy(governance.address)
+    await swap.deployed()
+    console.log("swap solution: ", swap.address)
   
     console.log("gov ", governance.address)
     console.log("treasury ", treasury.address)
@@ -72,8 +73,8 @@ describe("Chrysus tests", function () {
       governance.address, //governance signer
       treasury.address,
       auction.address,
-      "0xE592427A0AEce92De3Edee1F18E0157C05861564", //uniswap router on rinkeby (same on mainnet),
-      mockSwap.address,
+      UNI_ROUTER, //uniswap router on rinkeby (same on mainnet),
+      swap.address,
       mockStabilityModule.address // stability module
   
     );
@@ -82,7 +83,7 @@ describe("Chrysus tests", function () {
   
     await governance.connect(team).init(
       chrysus.address,
-      mockSwap.address,
+      swap.address,
       mockLending.address
     )
   
