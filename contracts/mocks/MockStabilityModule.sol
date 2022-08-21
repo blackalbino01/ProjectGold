@@ -56,8 +56,6 @@ contract MockStabilityModule {
         s.endTime = block.timestamp;
         s.withdrawAmount = _amount;
 
-        bool success = IGovernance(governance).transferFrom(msg.sender, address(this), _amount);
-        require(success);
     }
 
     function withdrawStake() external {
