@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "contracts/interfaces/AggregatorV3Interface.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "contracts/interfaces/IUniswapV2Pair.sol";
 
 contract Chrysus is ERC20 {
 
@@ -27,6 +28,7 @@ contract Chrysus is ERC20 {
     ISwapRouter public immutable swapRouter;
     ISwap public swapSolution;
     IStabilityModule public stabilityModule;
+    IUniswapV2Pair public pair;
 
     address public governance;
     address public treasury;
@@ -261,14 +263,14 @@ contract Chrysus is ERC20 {
             .minted;
 
         //sell collateral on swap solution at or above price of XAU
-        uint256 amountIn = swapSolution.swapExactOutput(
-            address(this),
-            _collateralType,
-            3000,
-            msg.sender,
-            block.timestamp,
+
+        address pool = swapSolution.getPair(address(this), _collateralType);
+        console.log("pool", pool);
+        IUniswapV2Pair(pool).swap(
             amountOut,
-            amountInMaximum
+            amountInMaximum,
+            address(0),
+            ""
         );
 
         //sell collateral on uniswap at or above price of XAU
@@ -298,7 +300,7 @@ contract Chrysus is ERC20 {
                 sqrtPriceLimitX96: 0
             });
 
-        amountIn = swapRouter.exactOutputSingle(params);
+        uint256 amountIn = swapRouter.exactOutputSingle(params);
 
         if (amountIn < amountInMaximum) {
             TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);

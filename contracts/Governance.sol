@@ -74,14 +74,18 @@ contract Governance is ERC20 {
     function init(
         address _chrysus,
         address _swapSolution,
-        address _lending
+        address _lending,
+        address _stabilityModule
     ) external {
         require(msg.sender == team, "can only be initted by team");
         require(initted == false);
         chrysus = IChrysus(_chrysus);
         swapSolution = ISwap(_swapSolution);
         lending = ILending(_lending);
+        stabilityModule = IStabilityModule(_stabilityModule);
         initted = true;
+
+        stabilityModule.updateLastGovContractCall(msg.sender);
     }
     //slither-disable-next-line divide-before-multiply
     function mintDaily() external {
@@ -100,6 +104,9 @@ contract Governance is ERC20 {
         _mint(address(this), 1e23 * numDays);
 
         lastMintTimestamp = block.timestamp;
+
+        stabilityModule.updateLastGovContractCall(msg.sender);
+
     }
     //slither-disable-next-line uninitialized-state
     function proposeVote(
@@ -121,6 +128,8 @@ contract Governance is ERC20 {
         _thisVote.voteAddress = _contract;
         _thisVote.voteFunction = _function;
         _thisVote.data = _data;
+
+        stabilityModule.updateLastGovContractCall(msg.sender);
     }
 
     function executeVote(uint256 _voteCount) external onlyVoter mustInit {
@@ -157,6 +166,9 @@ contract Governance is ERC20 {
         } else {
             v.result = false;
         }
+
+        stabilityModule.updateLastGovContractCall(msg.sender);
+
     }
 
     function vote(
@@ -177,5 +189,8 @@ contract Governance is ERC20 {
         } else {
             v.amountAgainst += balanceOf(msg.sender);
         }
+
+        stabilityModule.updateLastGovContractCall(msg.sender);
+
     }
 }

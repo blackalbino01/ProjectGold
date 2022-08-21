@@ -2,9 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "contracts/interfaces/IGovernance.sol";
+import "contracts/libraries/Math.sol";
+import "contracts/interfaces/IChrysus.sol";
 
 contract MockStabilityModule {
 
+
+    using DSMath for uint256;
     address governance;
 
     struct Stake {
@@ -38,6 +42,7 @@ contract MockStabilityModule {
         s.startTime = block.timestamp;
         s.endTime = type(uint256).max;
         s.amount = _amount;
+        s.lastGovContractCall = block.timestamp;
 
         totalPoolAmount += _amount;
 
@@ -65,10 +70,22 @@ contract MockStabilityModule {
         s.endTime = block.timestamp;
         totalPoolAmount -= s.withdrawAmount;
 
+        uint256 amount;
+
+        uint256 stakingReward = DSMath.wmul(DSMath.wdiv(s.amount, totalPoolAmount),  IChrysus(governance).balanceOf(address(this)));
+
+        amount = s.withdrawAmount + stakingReward;
         s.withdrawAmount = 0;
 
-        bool success = IGovernance(governance).transfer(msg.sender, s.withdrawAmount);
+        bool success = IGovernance(governance).transfer(msg.sender, amount);
         require(success);
+    }
+
+    function updateLastGovContractCall(address _voter) external {
+        require(msg.sender == governance);
+
+        governanceStakes[_voter].lastGovContractCall = block.timestamp;
+
     }
 
     function getGovernanceStake(address _staker) external view returns(Stake memory){

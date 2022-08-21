@@ -1,5 +1,6 @@
 const { EtherscanProvider } = require("@ethersproject/providers");
 const { expect, assert } = require("chai");
+const { AbiCoder, defaultAbiCoder } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
 
 describe("Chrysus tests", function () {
@@ -80,15 +81,29 @@ describe("Chrysus tests", function () {
     );
   
     await chrysus.deployed();
+
+    await mockStabilityModule.connect(team).stake(BigInt(73E24))
   
     await governance.connect(team).init(
       chrysus.address,
       swap.address,
-      mockLending.address
+      mockLending.address,
+      mockStabilityModule.address
     )
   
     console.log("Chrysus Stablecoin deployed to:", chrysus.address);
     console.log("chc/usd feed signer", accounts[0].address)
+
+  //deploy dai/chc pair
+
+  let encoder = defaultAbiCoder
+
+  let data = encoder.encode(["address", "address"], [DAI, chrysus.address])
+
+  await governance.connect(team).proposeVote(swap.address, "0xc9c65396", data)
+
+
+  //deploy uniswap pool
 
   await network.provider.request({
     method: "hardhat_impersonateAccount",

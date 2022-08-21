@@ -15,4 +15,7 @@ interface ISwap {
         uint256 amountOut,
         uint256 amountInMaximum
     ) external returns (uint256);
+
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
+
 }
