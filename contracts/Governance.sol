@@ -1,12 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "contracts/libraries/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "contracts/interfaces/IChrysus.sol";
 import "contracts/interfaces/ISwap.sol";
 import "contracts/interfaces/IStabilityModule.sol";
 import "contracts/interfaces/ILending.sol";
+import "hardhat/console.sol";
+import "contracts/libraries/Math.sol";
 
 contract Governance is ERC20 {
 
@@ -114,6 +115,8 @@ contract Governance is ERC20 {
         bytes4 _function,
         bytes memory _data
     ) external onlyVoter mustInit {
+        console.log("stake ", stabilityModule.getGovernanceStake(msg.sender).amount / 1e18);
+        console.log("total pool amount, ", stabilityModule.getTotalPoolAmount() / 10 / 1e18);
         require(
             stabilityModule.getGovernanceStake(msg.sender).amount >
                 stabilityModule.getTotalPoolAmount() / 10,
@@ -136,6 +139,9 @@ contract Governance is ERC20 {
         //75 percent of pool needs to vote
 
         Vote storage v = voteInfo[_voteCount];
+
+        console.log("top ", v.amountSupporting + v.amountAgainst + v.amountAbstained);
+        console.log("bottom ", (stabilityModule.getTotalPoolAmount() * 3) / 4);
 
         require(
             v.amountSupporting + v.amountAgainst + v.amountAbstained >

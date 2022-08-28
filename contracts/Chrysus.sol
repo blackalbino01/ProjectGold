@@ -240,7 +240,7 @@ contract Chrysus is ERC20 {
     }
 
     function liquidate(address _collateralType) external {
-        //require collateralizaiton ratio is under liquidation ratio
+        //require collateralization ratio is under liquidation ratio
 
         collateralizationRatio = collateralRatio();
         
@@ -254,25 +254,35 @@ contract Chrysus is ERC20 {
             .latestRoundData();
         (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
 
-        uint256 amountOut = (userDeposits[msg.sender][_collateralType].minted *
-            uint256(priceCollateral) *
-            100) /
-            uint256(priceXAU) /
-            10000;
+        uint256 amountOut = DSMath.wdiv(
+                                DSMath.wmul(
+                                    userDeposits[msg.sender][_collateralType].minted,
+                                    uint256(priceCollateral)),
+                                uint256(priceXAU)
+        );
+
         uint256 amountInMaximum = userDeposits[msg.sender][_collateralType]
             .minted;
 
+        require(amountOut > 0, "user has no positions to liquidate");
+        require(amountInMaximum > 0, "user has no positions to liquidate");
+
         //sell collateral on swap solution at or above price of XAU
-
         address pool = swapSolution.getPair(address(this), _collateralType);
-        console.log("pool", pool);
-        IUniswapV2Pair(pool).swap(
-            amountOut,
-            amountInMaximum,
-            address(0),
-            ""
-        );
 
+        console.log("amount out ", amountOut / 1e18);
+        console.log("amount in ", amountInMaximum / 1e18);
+
+        try
+        IUniswapV2Pair(pool).swap(
+            0,
+            amountInMaximum,
+            msg.sender,
+            ""
+        )
+        {
+            userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
+        } catch {
         //sell collateral on uniswap at or above price of XAU
 
         TransferHelper.safeApprove(
@@ -313,9 +323,20 @@ contract Chrysus is ERC20 {
             amountInMaximum = amountIn;
         }
 
+        userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
+
+        }
+
+        uint256 remainingBalance = userDeposits[msg.sender][_collateralType].minted;
+
+        if (remainingBalance > 0) {
         //auction off the rest
-        approve(auction, amountInMaximum);
-        transferFrom(msg.sender, auction, amountInMaximum);
+        approve(auction, remainingBalance);
+        transferFrom(msg.sender, auction, remainingBalance);
+        }
+
+        userDeposits[msg.sender][_collateralType].minted = 0;
+
     }
 
     //withdraws collateral in exchange for a given amount of CHC tokens
@@ -385,15 +406,14 @@ contract Chrysus is ERC20 {
                 }("");
                 require(success);
                 (success, ) = address(swapSolution).call{
-                    value: DSMath.wdiv(DSMath.wmul(_fees, 2000), 
-                        10000)
+                    value: DSMath.div(_fees, 5)
                 }("");
-                require(success);
+
                 (success, ) = address(stabilityModule).call{
                     value: DSMath.wdiv(DSMath.wmul(_fees, 5000), 
                         10000)
                 }("");
-                require(success);
+
 
             } else {
 
@@ -411,24 +431,18 @@ contract Chrysus is ERC20 {
                         10000)
                 );
                 require(success);
-                swapSolution.addLiquidity(
-                    collateralType,
-                    DSMath.wdiv(DSMath.wmul(_fees, 2000), 
-                        10000)
-                );
+                address pair = swapSolution.getPair(collateralType, address(this));
+                uint256 amount = DSMath.div(_fees , 5);
 
-                success = IERC20(collateralType).approve(
+                console.log("amount, ", amount / 1e18);
+
+                IERC20(collateralType).approve(pair, amount);
+                IERC20(collateralType).transferFrom(address(this), pair, amount);
+
+                success = IERC20(collateralType).transfer(
                     address(stabilityModule),
-                    DSMath.wdiv(DSMath.wmul(_fees, 5000), 
-                        10000)
+                    DSMath.div(_fees, 2)
                 );
-                require(success);
-                stabilityModule.addTokens(
-                    collateralType,
-                    DSMath.wdiv(DSMath.wmul(_fees, 5000), 
-                        10000)
-                );
-
             }
         }
     }

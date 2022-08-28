@@ -8,6 +8,7 @@ import './interfaces/ISwapFactory.sol';
 import './interfaces/IUniswapV2Callee.sol';
 import "./SwapERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "hardhat/console.sol";
 
 
 contract Pair is IUniswapV2Pair, SwapERC20 {
@@ -46,6 +47,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
     // slither-disable-next-line incorrect-equality
     function _safeTransfer(address token, address to, uint value) private {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
+        console.log(string(data));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'UniswapV2: TRANSFER_FAILED');
     }
 
@@ -113,7 +115,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
 
     // this low-level function should be called from a contract which performs important safety checks
     //slither-disable-next-line incorrect-equality
-    function mint(address to) external  lock returns (uint liquidity) {
+    function mint(address to) external override lock returns (uint liquidity) {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
@@ -167,6 +169,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external override  lock {
         require(amount0Out > 0 || amount1Out > 0, 'UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT');
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+        console.log("reserve0", _reserve0 / 1e18," reserve 1 ", _reserve1 / 1e18);
         require(amount0Out < _reserve0 && amount1Out < _reserve1, 'UniswapV2: INSUFFICIENT_LIQUIDITY');
 
         uint balance0;
@@ -175,6 +178,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
         address _token0 = token0;
         address _token1 = token1;
         require(to != _token0 && to != _token1, 'UniswapV2: INVALID_TO');
+        console.log("amount1 out", amount1Out / 1e18);
         if (amount0Out > 0) _safeTransfer(_token0, to, amount0Out); // optimistically transfer tokens
         if (amount1Out > 0) _safeTransfer(_token1, to, amount1Out); // optimistically transfer tokens
         if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data);

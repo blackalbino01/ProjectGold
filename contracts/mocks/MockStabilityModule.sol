@@ -21,30 +21,23 @@ contract MockStabilityModule {
 
     uint256 totalPoolAmount;
 
-    mapping(address => uint256) public balances;
     mapping(address => Stake) public governanceStakes;
 
     constructor(address _governance) {
         governance = _governance;
     }
 
-    function addTokens(address _collateralType, uint256 _amount)
-        external
-         {
-
-            balances[_collateralType] += _amount;
-
-        }
-
     function stake(uint256 _amount) external {
 
         Stake storage s = governanceStakes[msg.sender];
         s.startTime = block.timestamp;
         s.endTime = type(uint256).max;
-        s.amount = _amount;
+        s.amount += _amount;
         s.lastGovContractCall = block.timestamp;
 
         totalPoolAmount += _amount;
+
+        IGovernance(governance).transferFrom(msg.sender, address(this), _amount);
 
     }
 
@@ -58,7 +51,7 @@ contract MockStabilityModule {
 
     }
 
-    function withdrawStake() external {
+    function withdrawStake(address _collateralType) external {
 
         Stake storage s = governanceStakes[msg.sender];
 
@@ -71,11 +64,14 @@ contract MockStabilityModule {
         uint256 amount;
 
         uint256 stakingReward = DSMath.wmul(DSMath.wdiv(s.amount, totalPoolAmount),  IChrysus(governance).balanceOf(address(this)));
+        uint256 collateralReward = DSMath.wmul(DSMath.wdiv(s.amount, totalPoolAmount),  IChrysus(_collateralType).balanceOf(address(this)));
 
         amount = s.withdrawAmount + stakingReward;
         s.withdrawAmount = 0;
 
         bool success = IGovernance(governance).transfer(msg.sender, amount);
+        require(success);
+        success = IGovernance(_collateralType).transfer(msg.sender, collateralReward);
         require(success);
     }
 

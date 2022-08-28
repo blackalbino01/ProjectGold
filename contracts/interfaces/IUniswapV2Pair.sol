@@ -19,4 +19,6 @@ interface IUniswapV2Pair {
     function sync() external;
 
     function initialize(address, address) external;
+
+    function mint(address to) external returns (uint liquidity);
 }
