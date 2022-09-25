@@ -32,10 +32,10 @@ module.exports = {
       accounts: {
         mnemonic: "miss swift penalty skate expose today own stuff crew fold glare pond energy abuse cup"
       },
-      url: process.env.NODE_URL
+      url: process.env.NODE_URL || ""
     }
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_KEY
+    apiKey: process.env.ETHERSCAN_KEY || ""
   }
 };
