@@ -199,6 +199,23 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
         emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
     }
 
+    /** The functions below shouldbe called if a pool is drained
+     *  or very unbalanced
+     * 
+     * sync() functions as a recovery mechanism in the case that a
+     * token asynchronously deflates the balance of a pair.
+     * In this case, trades will receive sub-optimal rates,
+     * and if no liquidity provider is willing to rectify the situation, 
+     * the pair is stuck. sync() exists to set the reserves of the contract to the current balances,
+     * providing a somewhat graceful recovery from this situation.
+     * 
+     * skim() functions as a recovery mechanism in case enough tokens are sent
+     * to an pair to overflow the two uint112 storage slots for reserves,
+     * which could otherwise cause trades to fail.
+     * skim() allows a user to withdraw the difference between the current balance of the pair
+     * and 2**112 − 1 to the caller, if that difference is greater than 0.
+     */
+
     // force balances to match reserves
     function skim(address to) external override  lock {
         address _token0 = token0; // gas savings
