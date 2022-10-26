@@ -13,4 +13,5 @@ interface IGovernance {
 
     function transferFrom ( address from, address to, uint256 amount ) external returns ( bool );
 
+    function team () external returns (address);
 }

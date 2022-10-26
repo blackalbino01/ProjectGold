@@ -11,6 +11,8 @@ import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "contracts/interfaces/IUniswapV2Pair.sol";
 
+import {IGovernance} from "contracts/interfaces/IGovernance.sol";
+
 contract Chrysus is ERC20 {
 
     using DSMath for uint;
@@ -389,6 +391,9 @@ contract Chrysus is ERC20 {
 
         //iterate through collateral types
 
+        address team = IGovernance(governance).team();
+
+        require(msg.sender == team);
         address collateralType;
 
         for (uint256 i = 0; i < approvedTokens.length; i++) {
