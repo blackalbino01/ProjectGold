@@ -142,6 +142,10 @@ contract Chrysus is ERC20, ReentrancyGuard {
         //multiply CHC price * CHC total supply
         uint256 valueCHC = uint256(priceCHC) * totalSupply();
 
+        if (valueCHC == 0) {
+            return 110e6;
+        }
+
         address collateralType;
 
         int256 collateralPrice;
@@ -166,9 +170,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
             totalcollateralValue += singleCollateralValue;
         }
 
-        if (valueCHC == 0) {
-            return 110e6;
-        }
+        
 
         return DSMath.div(DSMath.mul(totalcollateralValue, 1 ether), valueCHC);
     }
