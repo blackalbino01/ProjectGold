@@ -170,7 +170,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
             return 110e6;
         }
 
-        return DSMath.wdiv(totalcollateralValue, valueCHC);
+        return DSMath.div(DSMath.mul(totalcollateralValue, 1 ether), valueCHC);
     }
 
     // slither-disable-next-line divide-before-multiply reentrancy-no-eth

@@ -246,7 +246,7 @@ describe("Chrysus tests", function () {
 
     expect(fees).to.be.equal(userDeposit / BigInt(10))
 
-    await chrysus.withdrawFees()
+    await chrysus.connect(team).withdrawFees()
 
   })
 
