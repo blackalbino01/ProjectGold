@@ -92,6 +92,8 @@ contract Governance is ERC20 {
     function mintDaily() external {
         uint256 numDays = (block.timestamp - lastMintTimestamp) / 86400;
 
+        require(numDays != 0,"number of days cannot be 0");
+
         //300,000 minted to CHC contract
         _mint(address(chrysus), 3e23 * numDays);
 
