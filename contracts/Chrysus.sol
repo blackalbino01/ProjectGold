@@ -6,6 +6,7 @@ import "contracts/libraries/Math.sol";
 import "contracts/interfaces/ISwap.sol";
 import "contracts/interfaces/IStabilityModule.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "contracts/interfaces/AggregatorV3Interface.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -13,7 +14,7 @@ import "contracts/interfaces/IUniswapV2Pair.sol";
 
 import {IGovernance} from "contracts/interfaces/IGovernance.sol";
 
-contract Chrysus is ERC20 {
+contract Chrysus is ERC20, ReentrancyGuard {
 
     using DSMath for uint;
 
@@ -343,7 +344,7 @@ contract Chrysus is ERC20 {
 
     //withdraws collateral in exchange for a given amount of CHC tokens
     function withdrawCollateral(address _collateralType, uint256 _amount)
-        external
+        external nonReentrant
     {
 
         console.log("balance", IERC20(_collateralType).balanceOf(address(this)));
