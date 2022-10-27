@@ -171,6 +171,7 @@ contract Governance is ERC20 {
             (_succ, _res) = _destination.call(
                 abi.encodePacked(v.voteFunction, v.data)
             ); //When testing _destination.call can require higher gas than the standard. Be sure to increase the gas if it fails.
+            require(_succ);
         } else {
             v.result = false;
         }
