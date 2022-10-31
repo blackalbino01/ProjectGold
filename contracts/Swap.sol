@@ -13,6 +13,12 @@ contract Swap is ISwapFactory {
 
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
+    //check that the address passed is feeSetter. 
+    modifier isFeeSetter(address _address) {
+        require(msg.sender == _address, 'Swap: FORBIDDEN');
+        _;
+    }
+
     constructor(address _feeToSetter) {
         feeToSetter = _feeToSetter;
     }
@@ -22,8 +28,7 @@ contract Swap is ISwapFactory {
     }
     
     // slither-disable-next-line reentrancy-no-eth
-    function createPair(address tokenA, address tokenB) external override returns (address pair) {
-        require(msg.sender == feeToSetter);
+    function createPair(address tokenA, address tokenB) external override isFeeSetter(msg.sender) returns (address pair) {
         require(tokenA != tokenB, 'Swap: IDENTICAL_ADDRESSES');
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(token0 != address(0), 'Swap: ZERO_ADDRESS');
@@ -40,13 +45,11 @@ contract Swap is ISwapFactory {
         emit PairCreated(token0, token1, pair, allPairs.length);
     }
 
-    function setFeeTo(address _feeTo) external override {
-        require(msg.sender == feeToSetter, 'Swap: FORBIDDEN');
+    function setFeeTo(address _feeTo) external override isFeeSetter(_feeTo){
         feeTo = _feeTo;
     }
 
-    function setFeeToSetter(address _feeToSetter) external override {
-        require(msg.sender == feeToSetter, 'Swap: FORBIDDEN');
+    function setFeeToSetter(address _feeToSetter) external override isFeeSetter(_feeToSetter){
         feeToSetter = _feeToSetter;
     }
 }
