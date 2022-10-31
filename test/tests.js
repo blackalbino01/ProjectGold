@@ -183,14 +183,14 @@ describe("Chrysus tests", function () {
 
     expect(amountMinted * Number(2.67) / Number(1E18)).to.be.closeTo(0.9, 0.01)
     
-    let collateralRatio = await chrysus.collateralRatio()
+    let collateralRatio = await chrysus.getCollateralizationRatio()
 
     assert(collateralRatio >= Number(110E6))
   })
 
   it("moving collat ratio", async function () {
 
-    let originalCollateralRatio = await chrysus.collateralRatio()
+    let originalCollateralRatio = await chrysus.getCollateralizationRatio()
 
     await mockOracle.setValue(BigInt(1769E18))
 
@@ -200,11 +200,11 @@ describe("Chrysus tests", function () {
 
     await chrysus.connect(daiHolder).depositCollateral(DAI, userDeposit)
 
-    let afterDepositeCollateralRatio = chrysus.collateralRatio()
+    let afterDepositeCollateralRatio = chrysus.getCollateralizationRatio()
 
     let amountMinted = await chrysus.balanceOf(DAI_HOLDER)
     await chrysus.connect(daiHolder).withdrawCollateral(DAI, BigInt(amountMinted))
-    let afterWithdrawalcollateralRatio = await chrysus.collateralRatio()
+    let afterWithdrawalcollateralRatio = await chrysus.getCollateralizationRatio()
 
     expect(originalCollateralRatio).to.equal(afterWithdrawalcollateralRatio)
 
@@ -224,7 +224,7 @@ describe("Chrysus tests", function () {
 
     await chrysus.connect(daiHolder).withdrawCollateral(DAI, BigInt(amountMinted))
 
-    let collateralRatio = await chrysus.collateralRatio()
+    let collateralRatio = await chrysus.getCollateralizationRatio()
 
     assert(collateralRatio >= Number(110E6))
 

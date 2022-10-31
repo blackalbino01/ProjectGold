@@ -41,7 +41,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         bool approved;
         uint256 balance;
         uint256 fees;
-        uint256 collateralRequirement;
+        uint256 minCollateral;
         AggregatorV3Interface oracle;
     }
 
@@ -106,7 +106,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
     function addCollateralType(
         address _collateralType,
-        uint256 _collateralRequirement,
+        uint256 _minCollateral,
         address _oracleAddress
     ) external {
         require(
@@ -117,10 +117,10 @@ contract Chrysus is ERC20, ReentrancyGuard {
             approvedCollateral[_collateralType].approved == false,
             "this collateral type already approved"
         );
-        _addCollateralType(_collateralType, _collateralRequirement, _oracleAddress);
+        _addCollateralType(_collateralType, _minCollateral, _oracleAddress);
     }
 
-    function collateralRatio() public view returns (uint256) {
+    function getCollateralizationRatio() public view returns (uint256) {
         //get CHC price using oracle
         (, int256 priceCHC, , , ) = oracleCHC.latestRoundData();
 
@@ -205,11 +205,11 @@ contract Chrysus is ERC20, ReentrancyGuard {
         //divide amount minted by CHC/XAU ratio
         amountToMint = DSMath.div(
             amountToMint * 10000,
-            ratio * approvedCollateral[_collateralType].collateralRequirement
+            ratio * approvedCollateral[_collateralType].minCollateral
         );
 
         //update collateralization ratio
-        collateralizationRatio = collateralRatio();
+        collateralizationRatio = getCollateralizationRatio();
 
         //mint new tokens (mint _amount * CHC/XAU ratio)
         _mint(msg.sender, amountToMint);
@@ -234,7 +234,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
     function liquidate(address _collateralType) external {
         //require collateralization ratio is under liquidation ratio
 
-        collateralizationRatio = collateralRatio();
+        collateralizationRatio = getCollateralizationRatio();
         
         require(
             collateralizationRatio < liquidationRatio,
@@ -362,7 +362,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         userDeposits[msg.sender][_collateralType].minted -= collateralToReturn;
 
         //update collateralization ratio
-        collateralizationRatio = collateralRatio();
+        collateralizationRatio = getCollateralizationRatio();
 
         //require that the transfer to msg.sender of collat amount is successful
         if (_collateralType == address(0)) {
@@ -467,13 +467,13 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
     function _addCollateralType(
         address _collateralType,
-        uint256 _collateralRequirement,
+        uint256 _minCollateral,
         address _oracleAddress
     ) internal {
         approvedTokens.push(_collateralType);
         approvedCollateral[_collateralType].approved = true;
         approvedCollateral[_collateralType]
-            .collateralRequirement = _collateralRequirement;
+            .minCollateral = _minCollateral;
         approvedCollateral[_collateralType].oracle = AggregatorV3Interface(
             _oracleAddress
         );
