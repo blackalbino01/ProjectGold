@@ -102,6 +102,12 @@ contract Chrysus is ERC20, ReentrancyGuard {
     }
 
 
+    //for depositing ETH as collateral
+    receive() external payable {
+        depositCollateral(address(0), msg.value);
+    }
+
+
     function addCollateralType(
         address _collateralType,
         uint256 _minCollateral,
@@ -118,116 +124,6 @@ contract Chrysus is ERC20, ReentrancyGuard {
         _addCollateralType(_collateralType, _minCollateral, _oracleAddress);
     }
 
-    function getCollateralizationRatio() public view returns (uint256) {
-        //get CHC price using oracle
-        (, int256 priceCHC, , , ) = oracleCHC.latestRoundData();
-
-        //multiply CHC price * CHC total supply
-        uint256 valueCHC = uint256(priceCHC) * totalSupply();
-
-        if (valueCHC == 0) {
-            return 110e6;
-        }
-
-        address collateralType;
-
-        int256 collateralPrice;
-        //declare collateral sum
-        uint256 totalcollateralValue;
-        //declare usd price
-        uint256 singleCollateralValue;
-
-        //for each collateral type...
-        for (uint256 i = 0; i < approvedTokens.length; i++) {
-            collateralType = approvedTokens[i];
-            //read oracle price
-            (, collateralPrice, , , ) = approvedCollateral[collateralType]
-                .oracle
-                .latestRoundData();
-
-            //multiply collateral amount in contract * oracle price to get USD price
-            singleCollateralValue =
-                approvedCollateral[collateralType].balance *
-                uint256(collateralPrice);
-            //add to sum
-            totalcollateralValue += singleCollateralValue;
-        }
-
-        
-
-        return DSMath.div(DSMath.mul(totalcollateralValue, 1 ether), valueCHC);
-    }
-
-    // slither-disable-next-line divide-before-multiply reentrancy-no-eth
-    function depositCollateral(address _collateralType, uint256 _amount)
-        public
-        payable
-    {
-        //10% of initial collateral collected as fee
-        uint256 ethFee = DSMath.div(msg.value, 10);
-        uint256 tokenFee = DSMath.div(_amount, 10);
-
-        //increase fee balance
-
-        _collateralType != address(0) ? approvedCollateral[_collateralType].fees += tokenFee : approvedCollateral[address(0)].fees += ethFee;
-
-        // //catch ether deposits
-        // userTokenDeposits[msg.sender][address(0)].amount += msg.value - ethFee;
-
-        //catch token deposits
-        userDeposits[msg.sender][_collateralType].deposited +=
-            _amount -
-            tokenFee;
-
-        //increase balance in approvedColateral mapping
-        approvedCollateral[_collateralType].balance += _amount - tokenFee;
-
-        //read CHC/USD oracle
-        (, int256 priceCHC, , , ) = oracleCHC.latestRoundData();
-
-        //read XAU/USD oracle
-        (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
-
-        //create CHC/XAU ratio
-        uint256 ratio = DSMath.div(uint256(priceCHC), uint256(priceXAU));
-
-        //read collateral price to calculate amount of CHC to mint
-        (, int256 priceCollateral, , , ) = approvedCollateral[_collateralType]
-            .oracle
-            .latestRoundData();
-        uint256 amountToMint = DSMath.wdiv(
-            (_amount - tokenFee) * uint256(priceCollateral),
-            uint256(priceCHC)
-        );
-
-        //divide amount minted by CHC/XAU ratio
-        amountToMint = DSMath.div(
-            amountToMint * 10000,
-            ratio * approvedCollateral[_collateralType].minCollateral
-        );
-
-        //update collateralization ratio
-        collateralizationRatio = getCollateralizationRatio();
-
-        //mint new tokens (mint _amount * CHC/XAU ratio)
-        _mint(msg.sender, amountToMint);
-
-        userDeposits[msg.sender][_collateralType].minted += amountToMint;
-
-        //approve and transfer from token (if address is not address 0)
-        if (_collateralType != address(0)) {
-            bool success = IERC20(_collateralType).transferFrom(
-                msg.sender,
-                address(this),
-                _amount
-            );
-            require(success);
-
-            emit CollateralDeposited(msg.sender, _amount);
-        }
-
-        emit CollateralDeposited(msg.sender, msg.value);
-    }
 
     function liquidate(address _collateralType) external {
         //require collateralization ratio is under liquidation ratio
@@ -457,11 +353,119 @@ contract Chrysus is ERC20, ReentrancyGuard {
         }
 
     }
+    
 
-    //for depositing ETH as collateral
-    receive() external payable {
-        depositCollateral(address(0), msg.value);
+    function getCollateralizationRatio() public view returns (uint256) {
+        //get CHC price using oracle
+        (, int256 priceCHC, , , ) = oracleCHC.latestRoundData();
+
+        //multiply CHC price * CHC total supply
+        uint256 valueCHC = uint256(priceCHC) * totalSupply();
+
+        if (valueCHC == 0) {
+            return 110e6;
+        }
+
+        address collateralType;
+
+        int256 collateralPrice;
+        //declare collateral sum
+        uint256 totalcollateralValue;
+        //declare usd price
+        uint256 singleCollateralValue;
+
+        //for each collateral type...
+        for (uint256 i = 0; i < approvedTokens.length; i++) {
+            collateralType = approvedTokens[i];
+            //read oracle price
+            (, collateralPrice, , , ) = approvedCollateral[collateralType]
+                .oracle
+                .latestRoundData();
+
+            //multiply collateral amount in contract * oracle price to get USD price
+            singleCollateralValue =
+                approvedCollateral[collateralType].balance *
+                uint256(collateralPrice);
+            //add to sum
+            totalcollateralValue += singleCollateralValue;
+        }
+
+        
+
+        return DSMath.div(DSMath.mul(totalcollateralValue, 1 ether), valueCHC);
     }
+
+    // slither-disable-next-line divide-before-multiply reentrancy-no-eth
+    function depositCollateral(address _collateralType, uint256 _amount)
+        public
+        payable
+    {
+        //10% of initial collateral collected as fee
+        uint256 ethFee = DSMath.div(msg.value, 10);
+        uint256 tokenFee = DSMath.div(_amount, 10);
+
+        //increase fee balance
+
+        _collateralType != address(0) ? approvedCollateral[_collateralType].fees += tokenFee : approvedCollateral[address(0)].fees += ethFee;
+
+        // //catch ether deposits
+        // userTokenDeposits[msg.sender][address(0)].amount += msg.value - ethFee;
+
+        //catch token deposits
+        userDeposits[msg.sender][_collateralType].deposited +=
+            _amount -
+            tokenFee;
+
+        //increase balance in approvedColateral mapping
+        approvedCollateral[_collateralType].balance += _amount - tokenFee;
+
+        //read CHC/USD oracle
+        (, int256 priceCHC, , , ) = oracleCHC.latestRoundData();
+
+        //read XAU/USD oracle
+        (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
+
+        //create CHC/XAU ratio
+        uint256 ratio = DSMath.div(uint256(priceCHC), uint256(priceXAU));
+
+        //read collateral price to calculate amount of CHC to mint
+        (, int256 priceCollateral, , , ) = approvedCollateral[_collateralType]
+            .oracle
+            .latestRoundData();
+        uint256 amountToMint = DSMath.wdiv(
+            (_amount - tokenFee) * uint256(priceCollateral),
+            uint256(priceCHC)
+        );
+
+        //divide amount minted by CHC/XAU ratio
+        amountToMint = DSMath.div(
+            amountToMint * 10000,
+            ratio * approvedCollateral[_collateralType].minCollateral
+        );
+
+        //update collateralization ratio
+        collateralizationRatio = getCollateralizationRatio();
+
+        //mint new tokens (mint _amount * CHC/XAU ratio)
+        _mint(msg.sender, amountToMint);
+
+        userDeposits[msg.sender][_collateralType].minted += amountToMint;
+
+        //approve and transfer from token (if address is not address 0)
+        if (_collateralType != address(0)) {
+            bool success = IERC20(_collateralType).transferFrom(
+                msg.sender,
+                address(this),
+                _amount
+            );
+            require(success);
+
+            emit CollateralDeposited(msg.sender, _amount);
+        }
+
+        emit CollateralDeposited(msg.sender, msg.value);
+    }
+
 
     function _addCollateralType(
         address _collateralType,
