@@ -84,25 +84,8 @@ contract Chrysus is ERC20, ReentrancyGuard {
         require(_stabilityModule != address(0));
         liquidationRatio = 110e6;
 
-        //add Dai as approved collateral
-        approvedCollateral[_daiAddress].approved = true;
-
-        //represent eth deposits as address 0 (a placeholder)
-        approvedCollateral[address(0)].approved = true;
-
-        approvedTokens.push(_daiAddress);
-        approvedTokens.push(address(0));
-
-        //connect to oracles
-        approvedCollateral[_daiAddress].oracle = AggregatorV3Interface(
-            _oracleDAI
-        );
-        approvedCollateral[address(0)].oracle = AggregatorV3Interface(
-            _oracleETH
-        );
-
-        approvedCollateral[_daiAddress].collateralRequirement = 267;
-        approvedCollateral[address(0)].collateralRequirement = 120;
+        _addCollateralType(_daiAddress, 267, _oracleDAI);
+        _addCollateralType(address(0), 120, _oracleETH);
 
         oracleCHC = AggregatorV3Interface(_oracleCHC);
         oracleXAU = AggregatorV3Interface(_oracleXAU);
@@ -131,16 +114,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
             approvedCollateral[_collateralType].approved == false,
             "this collateral type already approved"
         );
-
-        approvedTokens.push(_collateralType);
-        approvedCollateral[_collateralType].approved = true;
-        approvedCollateral[_collateralType]
-            .collateralRequirement = _collateralRequirement;
-        approvedCollateral[_collateralType].oracle = AggregatorV3Interface(
-            _oracleAddress
-        );
-
-        emit AddedCollateralType(_collateralType);
+        _addCollateralType(_collateralType, _collateralRequirement, _oracleAddress);
     }
 
     function collateralRatio() public view returns (uint256) {
@@ -486,5 +460,21 @@ contract Chrysus is ERC20, ReentrancyGuard {
     //for depositing ETH as collateral
     receive() external payable {
         depositCollateral(address(0), msg.value);
+    }
+
+    function _addCollateralType(
+        address _collateralType,
+        uint256 _collateralRequirement,
+        address _oracleAddress
+    ) internal {
+        approvedTokens.push(_collateralType);
+        approvedCollateral[_collateralType].approved = true;
+        approvedCollateral[_collateralType]
+            .collateralRequirement = _collateralRequirement;
+        approvedCollateral[_collateralType].oracle = AggregatorV3Interface(
+            _oracleAddress
+        );
+
+        emit AddedCollateralType(_collateralType);
     }
 }
