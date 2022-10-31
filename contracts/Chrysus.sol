@@ -25,13 +25,13 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
     address[] public approvedTokens;
 
-    AggregatorV3Interface oracleCHC;
-    AggregatorV3Interface oracleXAU;
+    AggregatorV3Interface public oracleCHC;
+    AggregatorV3Interface public oracleXAU;
 
     ISwapRouter public immutable swapRouter;
-    ISwap public swapSolution;
-    IStabilityModule public stabilityModule;
-    IUniswapV2Pair public pair;
+    ISwap public immutable swapSolution;
+    IStabilityModule public  immutable stabilityModule;
+    IUniswapV2Pair public immutable pair;
 
     address public governance;
     address public treasury;
