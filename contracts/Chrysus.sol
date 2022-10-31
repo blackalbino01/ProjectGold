@@ -50,6 +50,9 @@ contract Chrysus is ERC20, ReentrancyGuard {
         uint256 minted;
     }
 
+    /// @notice Thrown when address zero is provided
+    error ZeroAddress();
+
     mapping(address => mapping(address => Deposit)) public userDeposits; //user -> token address -> Deposit struct
 
     mapping(address => Collateral) public approvedCollateral;
@@ -73,15 +76,15 @@ contract Chrysus is ERC20, ReentrancyGuard {
         address _swapSolution,
         address _stabilityModule
     ) ERC20("Chrysus", "CHC") {
-        require(_daiAddress != address(0));
-        require(_oracleDAI != address(0));
-        require(_oracleETH != address(0));
-        require(_oracleXAU != address(0));
-        require(_governance != address(0));
-        require(_treasury != address(0));
-        require(_auction != address(0));
-        require(_swapSolution != address(0));
-        require(_stabilityModule != address(0));
+        if (_daiAddress == address(0)) revert ZeroAddress();
+        if (_oracleDAI == address(0)) revert ZeroAddress();
+        if (_oracleETH == address(0)) revert ZeroAddress();
+        if (_oracleXAU == address(0)) revert ZeroAddress();
+        if (_governance == address(0)) revert ZeroAddress();
+        if (_treasury == address(0)) revert ZeroAddress();
+        if (_auction == address(0)) revert ZeroAddress();
+        if (_swapSolution == address(0)) revert ZeroAddress();
+        if (_stabilityModule == address(0)) revert ZeroAddress();
         liquidationRatio = 110e6;
 
         _addCollateralType(_daiAddress, 267, _oracleDAI);
