@@ -42,6 +42,10 @@ contract Governance is ERC20 {
 
     mapping(uint256 => Vote) public voteInfo;
 
+    event VoteProposed(address indexed user, uint256 voteId, uint256 timestamp, address indexed voteAddress);
+    event Voted(address indexed user, uint256 voteCount);
+    event VoteExecuted(address executor, bool result);
+
     modifier onlyVoter() {
         require(
             (stabilityModule.getGovernanceStake(msg.sender).startTime >
@@ -135,6 +139,8 @@ contract Governance is ERC20 {
         _thisVote.data = _data;
 
         stabilityModule.updateLastGovContractCall(msg.sender);
+
+        emit VoteProposed(msg.sender, voteId, _thisVote.startTime, _thisVote.voteAddress);
     }
 
     function executeVote(uint256 _voteCount) external onlyVoter mustInit {
@@ -178,6 +184,8 @@ contract Governance is ERC20 {
 
         stabilityModule.updateLastGovContractCall(msg.sender);
 
+        emit VoteExecuted(msg.sender, v.result);
+
     }
 
     function vote(
@@ -200,6 +208,8 @@ contract Governance is ERC20 {
         }
 
         stabilityModule.updateLastGovContractCall(msg.sender);
+
+        emit Voted(msg.sender, _voteCount);
 
     }
 }
