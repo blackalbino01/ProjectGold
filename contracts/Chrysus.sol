@@ -72,7 +72,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         address _governance,
         address _treasury,
         address _auction,
-        ISwapRouter _swapRouter,
+        address _swapRouter,
         address _swapSolution,
         address _stabilityModule
     ) ERC20("Chrysus", "CHC") {
@@ -97,7 +97,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         treasury = _treasury;
         auction = _auction;
 
-        swapRouter = _swapRouter;
+        swapRouter = ISwapRouter(_swapRouter);
 
         swapSolution = ISwap(_swapSolution);
         stabilityModule = IStabilityModule(_stabilityModule);
