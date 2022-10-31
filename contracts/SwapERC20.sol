@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity >0.5.16;
+pragma solidity 0.8.4;
 
 import './interfaces/ISwapERC20.sol';
 import './libraries/Math.sol';

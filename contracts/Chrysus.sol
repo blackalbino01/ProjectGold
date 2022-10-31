@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "hardhat/console.sol";
 import "contracts/libraries/Math.sol";
@@ -32,7 +32,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
     ISwapRouter public immutable swapRouter;
     ISwap public immutable swapSolution;
     IStabilityModule public  immutable stabilityModule;
-    IUniswapV2Pair public immutable pair;
+    IUniswapV2Pair public pair;
 
 
     struct Collateral {
@@ -435,13 +435,13 @@ contract Chrysus is ERC20, ReentrancyGuard {
                         10000)
                 );
                 require(success);
-                address pair = swapSolution.getPair(collateralType, address(this));
+                address _pair = swapSolution.getPair(collateralType, address(this));
                 uint256 amount = DSMath.div(_fees , 5);
 
                 console.log("amount, ", amount / 1e18);
 
-                IERC20(collateralType).approve(pair, amount);
-                IERC20(collateralType).transferFrom(address(this), pair, amount);
+                IERC20(collateralType).approve(_pair, amount);
+                IERC20(collateralType).transferFrom(address(this), _pair, amount);
 
                 success = IERC20(collateralType).transfer(
                     address(stabilityModule),
