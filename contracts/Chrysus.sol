@@ -250,10 +250,11 @@ contract Chrysus is ERC20, ReentrancyGuard {
         //decrease collateral balance at user's account
         userDeposits[msg.sender][_collateralType].deposited -= _amount;
 
+        userDeposits[msg.sender][_collateralType].minted -= collateralToReturn;
+
         //burn the CHC amount
         _burn(address(this), _amount);
 
-        userDeposits[msg.sender][_collateralType].minted -= collateralToReturn;
 
         //update collateralization ratio
         collateralizationRatio = getCollateralizationRatio();
@@ -353,7 +354,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         }
 
     }
-    
+
 
     function getCollateralizationRatio() public view returns (uint256) {
         //get CHC price using oracle
@@ -446,10 +447,11 @@ contract Chrysus is ERC20, ReentrancyGuard {
         //update collateralization ratio
         collateralizationRatio = getCollateralizationRatio();
 
+        userDeposits[msg.sender][_collateralType].minted += amountToMint;
+
         //mint new tokens (mint _amount * CHC/XAU ratio)
         _mint(msg.sender, amountToMint);
 
-        userDeposits[msg.sender][_collateralType].minted += amountToMint;
 
         //approve and transfer from token (if address is not address 0)
         if (_collateralType != address(0)) {
