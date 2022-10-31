@@ -24,6 +24,9 @@ contract Chrysus is ERC20, ReentrancyGuard {
     uint256 public ethFees;
 
     address[] public approvedTokens;
+    address public governance;
+    address public treasury;
+    address public auction;
 
     AggregatorV3Interface public oracleCHC;
     AggregatorV3Interface public oracleXAU;
@@ -33,9 +36,6 @@ contract Chrysus is ERC20, ReentrancyGuard {
     IStabilityModule public  immutable stabilityModule;
     IUniswapV2Pair public immutable pair;
 
-    address public governance;
-    address public treasury;
-    address public auction;
 
     struct Collateral {
         bool approved;
