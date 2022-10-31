@@ -185,11 +185,9 @@ contract Chrysus is ERC20, ReentrancyGuard {
         uint256 tokenFee = DSMath.div(_amount, 10);
 
         //increase fee balance
-        approvedCollateral[address(0)].fees += ethFee;
 
-        if (_collateralType != address(0)) {
-            approvedCollateral[_collateralType].fees += tokenFee;
-        }
+        _collateralType != address(0) ? approvedCollateral[_collateralType].fees += tokenFee : approvedCollateral[address(0)].fees += ethFee;
+
         // //catch ether deposits
         // userTokenDeposits[msg.sender][address(0)].amount += msg.value - ethFee;
 
