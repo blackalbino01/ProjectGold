@@ -93,7 +93,8 @@ contract Governance is ERC20 {
         stabilityModule.updateLastGovContractCall(msg.sender);
     }
     //slither-disable-next-line divide-before-multiply
-    function mintDaily() external {
+    function mintDaily() external mustInit{
+        require(msg.sender == team, "can only be called by team");
         uint256 numDays = (block.timestamp - lastMintTimestamp) / 86400;
 
         require(numDays != 0,"number of days cannot be 0");
