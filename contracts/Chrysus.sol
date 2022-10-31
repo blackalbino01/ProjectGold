@@ -20,9 +20,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
     uint256 public liquidationRatio;
     uint256 public collateralizationRatio;
-    uint256 public ethBalance;
-    uint256 public ethFees;
-
+    
     address[] public approvedTokens;
     address public governance;
     address public treasury;
