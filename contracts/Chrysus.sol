@@ -54,6 +54,12 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
     mapping(address => Collateral) public approvedCollateral;
 
+    event CollateralDeposited(address indexed user, uint256 amount);
+    event CollateralWithdrawn(address indexed user, uint256 amount);
+    event AddedCollateralType(address indexed collateralToken);
+    event Liquidated(address indexed liquidator, address indexed user, uint256 amountLiquidated);
+    event FeesWithdrawn(uint256 indexed treasuryFees, uint256 indexed swapSolutionFees, uint256 indexed stabilityModuleFees);
+
     constructor(
         address _daiAddress,
         address _oracleDAI,
@@ -133,6 +139,8 @@ contract Chrysus is ERC20, ReentrancyGuard {
         approvedCollateral[_collateralType].oracle = AggregatorV3Interface(
             _oracleAddress
         );
+
+        emit AddedCollateralType(_collateralType);
     }
 
     function collateralRatio() public view returns (uint256) {
@@ -239,7 +247,11 @@ contract Chrysus is ERC20, ReentrancyGuard {
                 _amount
             );
             require(success);
+
+            emit CollateralDeposited(msg.sender, _amount);
         }
+
+        emit CollateralDeposited(msg.sender, msg.value);
     }
 
     function liquidate(address _collateralType) external {
@@ -340,6 +352,8 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
         userDeposits[msg.sender][_collateralType].minted = 0;
 
+        emit Liquidated(pool, msg.sender, amountInMaximum);
+
     }
 
     //withdraws collateral in exchange for a given amount of CHC tokens
@@ -382,6 +396,8 @@ contract Chrysus is ERC20, ReentrancyGuard {
                 IERC20(_collateralType).transfer(msg.sender, collateralToReturn)
             );
         }
+
+        emit CollateralWithdrawn(msg.sender, _amount);
     }
 
     // slither-disable-next-line arbitrary-send
@@ -420,6 +436,13 @@ contract Chrysus is ERC20, ReentrancyGuard {
                         10000)
                 }("");
 
+                emit FeesWithdrawn(DSMath.wdiv(DSMath.wmul(_fees, 3000), 
+                        10000), 
+                        DSMath.div(_fees, 5), 
+                        DSMath.wdiv(DSMath.wmul(_fees, 5000), 
+                        10000)
+                );
+
 
             } else {
 
@@ -449,8 +472,15 @@ contract Chrysus is ERC20, ReentrancyGuard {
                     address(stabilityModule),
                     DSMath.div(_fees, 2)
                 );
+
+                emit FeesWithdrawn(DSMath.wdiv(DSMath.wmul(_fees, 3000), 
+                        10000), 
+                        DSMath.div(_fees, 5), 
+                        DSMath.div(_fees, 2)
+                );
             }
         }
+
     }
 
     //for depositing ETH as collateral
