@@ -160,12 +160,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         console.log("amount in ", amountInMaximum / 1e18);
 
         try
-        IUniswapV2Pair(pool).swap(
-            0,
-            amountInMaximum,
-            msg.sender,
-            ""
-        )
+        uniswapV2Call(msg.sender, 0, amountInMaximum);
         {
             userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
         } catch {
@@ -270,6 +265,18 @@ contract Chrysus is ERC20, ReentrancyGuard {
         }
 
         emit CollateralWithdrawn(msg.sender, _amount);
+    }
+
+    function uniswapV2Call(address sender, uint amount0, uint amount1, bytes calldata data) {
+        address token0 = IUniswapV2Pair(msg.sender).token0(); // fetch the address of token0
+        address token1 = IUniswapV2Pair(msg.sender).token1(); // fetch the address of token1
+        assert(msg.sender == IUniswapV2Factory(factoryV2).getPair(token0, token1)); // ensure that msg.sender is a V2 pair
+        IUniswapV2Pair(pool).swap(
+            amount0,
+            amount1,
+            sender,
+            ""
+        )
     }
 
     // slither-disable-next-line arbitrary-send
