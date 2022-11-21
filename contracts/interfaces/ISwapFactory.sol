@@ -14,4 +14,6 @@ interface ISwapFactory {
 
     function setFeeTo(address) external;
     function setFeeToSetter(address) external;
+
+    function uniswapV2Call(address sender, uint amount0, uint amount1, bytes memory data) external returns (bool);
 }

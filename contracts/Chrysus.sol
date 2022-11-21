@@ -156,63 +156,63 @@ contract Chrysus is ERC20, ReentrancyGuard {
         //sell collateral on swap solution at or above price of XAU
         address pool = swapSolution.getPair(address(this), _collateralType);
 
-        console.log("amount out ", amountOut / 1e18);
-        console.log("amount in ", amountInMaximum / 1e18);
+        console.log("chrysus address ", address(this));
+        console.log("collateral type address ", _collateralType);
 
         
-        assert(uniswapV2Call(msg.sender, 0, amountInMaximum, ""));
+        require(swapSolution.uniswapV2Call(pool, 0, amountInMaximum, ""));
         userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
         //sell collateral on uniswap at or above price of XAU
 
-        TransferHelper.safeApprove(
-            address(this),
-            address(swapRouter),
-            amountInMaximum
-        );
+        // TransferHelper.safeApprove(
+        //     address(this),
+        //     address(swapRouter),
+        //     amountInMaximum
+        // );
 
-        amountOut =
-            (userDeposits[msg.sender][_collateralType].minted *
-                uint256(priceCollateral) *
-                100) /
-            uint256(priceXAU) /
-            10000;
+        // amountOut =
+        //     (userDeposits[msg.sender][_collateralType].minted *
+        //         uint256(priceCollateral) *
+        //         100) /
+        //     uint256(priceXAU) /
+        //     10000;
 
-        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
-            .ExactOutputSingleParams({
-                tokenIn: address(this),
-                tokenOut: _collateralType,
-                fee: 3000,
-                recipient: msg.sender,
-                deadline: block.timestamp,
-                amountOut: amountOut,
-                amountInMaximum: amountInMaximum,
-                sqrtPriceLimitX96: 0
-            });
+        // ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
+        //     .ExactOutputSingleParams({
+        //         tokenIn: address(this),
+        //         tokenOut: _collateralType,
+        //         fee: 3000,
+        //         recipient: msg.sender,
+        //         deadline: block.timestamp,
+        //         amountOut: amountOut,
+        //         amountInMaximum: amountInMaximum,
+        //         sqrtPriceLimitX96: 0
+        //     });
 
-        uint256 amountIn = swapRouter.exactOutputSingle(params);
+        // // uint256 amountIn = swapRouter.exactOutputSingle(params);
 
-        if (amountIn < amountInMaximum) {
-            TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
-            TransferHelper.safeTransfer(
-                address(this),
-                msg.sender,
-                amountInMaximum - amountIn
-            );
+        // if (amountIn < amountInMaximum) {
+        //     TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
+        //     TransferHelper.safeTransfer(
+        //         address(this),
+        //         msg.sender,
+        //         amountInMaximum - amountIn
+        //     );
 
-            amountInMaximum = amountIn;
-        }
+        //     amountInMaximum = amountIn;
+        // }
 
-        userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
+        // userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
 
-        uint256 remainingBalance = userDeposits[msg.sender][_collateralType].minted;
+        // uint256 remainingBalance = userDeposits[msg.sender][_collateralType].minted;
 
-        if (remainingBalance > 0) {
-        //auction off the rest
-        approve(auction, remainingBalance);
-        transferFrom(msg.sender, auction, remainingBalance);
-        }
+        // if (remainingBalance > 0) {
+        // //auction off the rest
+        // approve(auction, remainingBalance);
+        // transferFrom(msg.sender, auction, remainingBalance);
+        // }
 
-        userDeposits[msg.sender][_collateralType].minted = 0;
+        // userDeposits[msg.sender][_collateralType].minted = 0;
 
         emit Liquidated(pool, msg.sender, amountInMaximum);
 
@@ -261,13 +261,6 @@ contract Chrysus is ERC20, ReentrancyGuard {
         }
 
         emit CollateralWithdrawn(msg.sender, _amount);
-    }
-
-    function uniswapV2Call(address sender, uint amount0, uint amount1, bytes memory data) public returns (bool) {
-        address token0 = IUniswapV2Pair(msg.sender).token0(); // fetch the address of token0
-        address token1 = IUniswapV2Pair(msg.sender).token1(); // fetch the address of token1
-        assert(msg.sender == ISwap(swapSolution).getPair(token0, token1)); // ensure that msg.sender is a V2 pair
-        return true;
     }
 
     // slither-disable-next-line arbitrary-send

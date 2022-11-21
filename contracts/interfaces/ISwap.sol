@@ -18,4 +18,7 @@ interface ISwap {
 
     function getPair(address tokenA, address tokenB) external view returns (address pair);
 
+
+    function uniswapV2Call(address sender, uint amount0, uint amount1, bytes memory data) external returns (bool);
+
 }
