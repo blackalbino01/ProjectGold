@@ -21,4 +21,8 @@ interface IUniswapV2Pair {
     function initialize(address, address) external;
 
     function mint(address to) external returns (uint liquidity);
+
+    function token0() external returns (address);
+    function token1() external returns (address);
+
 }

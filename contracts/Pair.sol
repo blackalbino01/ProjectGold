@@ -19,8 +19,8 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
 
     address public  factory;
-    address public  token0;
-    address public  token1;
+    address override public  token0;
+    address override public  token1;
 
     uint112 private reserve0;           // uses single storage slot, accessible via getReserves
     uint112 private reserve1;           // uses single storage slot, accessible via getReserves
