@@ -160,7 +160,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         console.log("amount in ", amountInMaximum / 1e18);
 
         
-        assert(uniswapV2Call(msg.sender, 0, amountInMaximum, ""));
+        assert(uniswapV2Call(pool, 0, amountInMaximum, ""));
         userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
         //sell collateral on uniswap at or above price of XAU
 
@@ -264,9 +264,9 @@ contract Chrysus is ERC20, ReentrancyGuard {
     }
 
     function uniswapV2Call(address sender, uint amount0, uint amount1, bytes memory data) public returns (bool) {
-        address token0 = IUniswapV2Pair(msg.sender).token0(); // fetch the address of token0
-        address token1 = IUniswapV2Pair(msg.sender).token1(); // fetch the address of token1
-        assert(msg.sender == ISwap(swapSolution).getPair(token0, token1)); // ensure that msg.sender is a V2 pair
+        address token0 = IUniswapV2Pair(sender).token0(); // fetch the address of token0
+        address token1 = IUniswapV2Pair(sender).token1(); // fetch the address of token1
+        assert(sender == ISwap(swapSolution).getPair(token0, token1)); // ensure that msg.sender is a V2 pair
         return true;
     }
 
