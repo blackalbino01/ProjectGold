@@ -140,18 +140,19 @@ contract Chrysus is ERC20, ReentrancyGuard {
             .latestRoundData();
         (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
 
-        uint256 amountOut = DSMath.wdiv(
-                                DSMath.wmul(
-                                    userDeposits[msg.sender][_collateralType].minted,
-                                    uint256(priceCollateral)),
-                                uint256(priceXAU)
-        );
+        // uint256 amountOutCHC = DSMath.wdiv(
+        //                         DSMath.wmul(
+        //                             userDeposits[msg.sender][_collateralType].minted,
+        //                             uint256(priceCollateral)),
+        //                         uint256(priceXAU)
+        // );
 
-        uint256 amountInMaximum = userDeposits[msg.sender][_collateralType]
-            .minted;
+        uint256 amountOutCHC = userDeposits[msg.sender][_collateralType].minted;
+        uint256 amountOutCollateral = userDeposits[msg.sender][_collateralType]
+            .deposited;
 
-        require(amountOut > 0, "user has no positions to liquidate");
-        require(amountInMaximum > 0, "user has no positions to liquidate");
+        require(amountOutCHC > 0, "user has no positions to liquidate");
+        require(amountOutCollateral > 0, "user has no positions to liquidate");
 
         //sell collateral on swap solution at or above price of XAU
         address pool = swapSolution.getPair(address(this), _collateralType);
@@ -160,61 +161,61 @@ contract Chrysus is ERC20, ReentrancyGuard {
         console.log("collateral type address ", _collateralType);
 
         
-        require(swapSolution.uniswapV2Call(pool, 0, amountInMaximum, ""));
-        userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
-        //sell collateral on uniswap at or above price of XAU
+        require(swapSolution.uniswapV2Call(pool, 0, amountOutCollateral, ""));
+        userDeposits[msg.sender][_collateralType].minted -= amountOutCHC;
+        // sell collateral on uniswap at or above price of XAU
 
-        // TransferHelper.safeApprove(
-        //     address(this),
-        //     address(swapRouter),
-        //     amountInMaximum
-        // );
+        TransferHelper.safeApprove(
+            address(this),
+            address(swapRouter),
+            amountOutCollateral
+        );
 
-        // amountOut =
-        //     (userDeposits[msg.sender][_collateralType].minted *
-        //         uint256(priceCollateral) *
-        //         100) /
-        //     uint256(priceXAU) /
-        //     10000;
+        amountOutCHC =
+            (userDeposits[msg.sender][_collateralType].minted *
+                uint256(priceCollateral) *
+                100) /
+            uint256(priceXAU) /
+            10000;
 
-        // ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
-        //     .ExactOutputSingleParams({
-        //         tokenIn: address(this),
-        //         tokenOut: _collateralType,
-        //         fee: 3000,
-        //         recipient: msg.sender,
-        //         deadline: block.timestamp,
-        //         amountOut: amountOut,
-        //         amountInMaximum: amountInMaximum,
-        //         sqrtPriceLimitX96: 0
-        //     });
+        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
+            .ExactOutputSingleParams({
+                tokenIn: address(this),
+                tokenOut: _collateralType,
+                fee: 3000,
+                recipient: msg.sender,
+                deadline: block.timestamp,
+                amountOut: amountOutCHC,
+                amountInMaximum: amountOutCollateral,
+                sqrtPriceLimitX96: 0
+            });
 
-        // // uint256 amountIn = swapRouter.exactOutputSingle(params);
+        uint256 amountIn = swapRouter.exactOutputSingle(params);
 
-        // if (amountIn < amountInMaximum) {
-        //     TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
-        //     TransferHelper.safeTransfer(
-        //         address(this),
-        //         msg.sender,
-        //         amountInMaximum - amountIn
-        //     );
+        if (amountIn < amountOutCollateral) {
+            TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
+            TransferHelper.safeTransfer(
+                address(this),
+                msg.sender,
+                amountOutCollateral - amountIn
+            );
 
-        //     amountInMaximum = amountIn;
-        // }
+            amountOutCollateral = amountIn;
+        }
 
-        // userDeposits[msg.sender][_collateralType].minted -= amountInMaximum;
+        userDeposits[msg.sender][_collateralType].minted -= amountOutCollateral;
 
-        // uint256 remainingBalance = userDeposits[msg.sender][_collateralType].minted;
+        uint256 remainingBalance = userDeposits[msg.sender][_collateralType].minted;
 
-        // if (remainingBalance > 0) {
-        // //auction off the rest
-        // approve(auction, remainingBalance);
-        // transferFrom(msg.sender, auction, remainingBalance);
-        // }
+        if (remainingBalance > 0) {
+        //auction off the rest
+        approve(auction, remainingBalance);
+        transferFrom(msg.sender, auction, remainingBalance);
+        }
 
-        // userDeposits[msg.sender][_collateralType].minted = 0;
+        userDeposits[msg.sender][_collateralType].minted = 0;
 
-        emit Liquidated(pool, msg.sender, amountInMaximum);
+        emit Liquidated(pool, msg.sender, amountOutCollateral);
 
     }
 
