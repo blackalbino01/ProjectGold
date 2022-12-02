@@ -415,7 +415,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
             .deposited;
 
         require(amountOutCHC > 0, "user has no positions to liquidate");
-        //require(_amount <= amountOutCollateral, "user has no positions to liquidate");
+        require(_amount <= amountOutCollateral, "user has no positions to liquidate");
 
         //sell collateral on swap solution at or above price of XAU
         address pool = swapSolution.getPair(address(this), _collateralType);
