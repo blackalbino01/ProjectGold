@@ -125,99 +125,10 @@ contract Chrysus is ERC20, ReentrancyGuard {
     }
 
 
-    function liquidate(address _collateralType) external {
-        //require collateralization ratio is under liquidation ratio
-
-        collateralizationRatio = getCollateralizationRatio();
-        
-        require(
-            collateralizationRatio < liquidationRatio,
-            "cannot liquidate position"
-        );
-
-        (, int256 priceCollateral, , , ) = approvedCollateral[_collateralType]
-            .oracle
-            .latestRoundData();
-        (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
-
-        // uint256 amountOutCHC = DSMath.wdiv(
-        //                         DSMath.wmul(
-        //                             userDeposits[msg.sender][_collateralType].minted,
-        //                             uint256(priceCollateral)),
-        //                         uint256(priceXAU)
-        // );
-
-        uint256 amountOutCHC = userDeposits[msg.sender][_collateralType].minted;
-        uint256 amountOutCollateral = userDeposits[msg.sender][_collateralType]
-            .deposited;
-
-        require(amountOutCHC > 0, "user has no positions to liquidate");
-        require(amountOutCollateral > 0, "user has no positions to liquidate");
-
-        //sell collateral on swap solution at or above price of XAU
-        address pool = swapSolution.getPair(address(this), _collateralType);
-
-        console.log("chrysus address ", address(this));
-        console.log("collateral type address ", _collateralType);
-
-        
-        require(swapSolution.uniswapV2Call(pool, 0, amountOutCollateral, ""));
-        userDeposits[msg.sender][_collateralType].minted -= amountOutCHC;
-        // sell collateral on uniswap at or above price of XAU
-
-        TransferHelper.safeApprove(
-            address(this),
-            address(swapRouter),
-            amountOutCollateral
-        );
-
-        amountOutCHC =
-            (userDeposits[msg.sender][_collateralType].minted *
-                uint256(priceCollateral) *
-                100) /
-            uint256(priceXAU) /
-            10000;
-
-        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
-            .ExactOutputSingleParams({
-                tokenIn: address(this),
-                tokenOut: _collateralType,
-                fee: 3000,
-                recipient: msg.sender,
-                deadline: block.timestamp,
-                amountOut: amountOutCHC,
-                amountInMaximum: amountOutCollateral,
-                sqrtPriceLimitX96: 0
-            });
-
-        uint256 amountIn = swapRouter.exactOutputSingle(params);
-
-        if (amountIn < amountOutCollateral) {
-            TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
-            TransferHelper.safeTransfer(
-                address(this),
-                msg.sender,
-                amountOutCollateral - amountIn
-            );
-
-            amountOutCollateral = amountIn;
-        }
-
-        userDeposits[msg.sender][_collateralType].minted -= amountOutCollateral;
-
-        uint256 remainingBalance = userDeposits[msg.sender][_collateralType].minted;
-
-        if (remainingBalance > 0) {
-        //auction off the rest
-        approve(auction, remainingBalance);
-        transferFrom(msg.sender, auction, remainingBalance);
-        }
-
-        userDeposits[msg.sender][_collateralType].minted = 0;
-
-        emit Liquidated(pool, msg.sender, amountOutCollateral);
-
+    function liquidate(address _userToliquidate, address _collateralType, uint _amount) external nonReentrant{
+        _liquidate(_userToliquidate, _collateralType, _amount);
     }
+
 
     //withdraws collateral in exchange for a given amount of CHC tokens
     function withdrawCollateral(address _collateralType, uint256 _amount)
@@ -475,5 +386,99 @@ contract Chrysus is ERC20, ReentrancyGuard {
         );
 
         emit AddedCollateralType(_collateralType);
+    }
+
+    function _liquidate(address _userToliquidate, address _collateralType, uint _amount) internal {
+        //require collateralization ratio is under liquidation ratio
+
+        collateralizationRatio = getCollateralizationRatio();
+        
+        require(
+            collateralizationRatio < liquidationRatio,
+            "cannot liquidate position"
+        );
+
+        (, int256 priceCollateral, , , ) = approvedCollateral[_collateralType]
+            .oracle
+            .latestRoundData();
+        (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
+
+        // uint256 amountOutCHC = DSMath.wdiv(
+        //                         DSMath.wmul(
+        //                             userDeposits[_userToliquidate][_collateralType].minted,
+        //                             uint256(priceCollateral)),
+        //                         uint256(priceXAU)
+        // );
+
+        uint256 amountOutCHC = userDeposits[_userToliquidate][_collateralType].minted;
+        uint256 amountOutCollateral = userDeposits[_userToliquidate][_collateralType]
+            .deposited;
+
+        require(amountOutCHC > 0, "user has no positions to liquidate");
+        //require(_amount <= amountOutCollateral, "user has no positions to liquidate");
+
+        //sell collateral on swap solution at or above price of XAU
+        address pool = swapSolution.getPair(address(this), _collateralType);
+
+        console.log("chrysus address ", address(this));
+        console.log("collateral type address ", _collateralType);
+
+        
+        require(swapSolution.uniswapV2Call(pool, 0, _amount, ""));
+        userDeposits[_userToliquidate][_collateralType].minted -= amountOutCHC;
+        // sell collateral on uniswap at or above price of XAU
+
+        TransferHelper.safeApprove(
+            address(this),
+            address(swapRouter),
+            _amount
+        );
+
+        amountOutCHC =
+            (userDeposits[_userToliquidate][_collateralType].minted *
+                uint256(priceCollateral) *
+                100) /
+            uint256(priceXAU) /
+            10000;
+
+        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
+            .ExactOutputSingleParams({
+                tokenIn: address(this),
+                tokenOut: _collateralType,
+                fee: 3000,
+                recipient: _userToliquidate,
+                deadline: block.timestamp,
+                amountOut: amountOutCHC,
+                amountInMaximum: _amount,
+                sqrtPriceLimitX96: 0
+            });
+
+        uint256 amountIn = swapRouter.exactOutputSingle(params);
+
+        if (amountIn < _amount) {
+            TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
+            TransferHelper.safeTransfer(
+                address(this),
+                _userToliquidate,
+                _amount - amountIn
+            );
+
+            _amount = amountIn;
+        }
+
+        userDeposits[_userToliquidate][_collateralType].minted -= _amount;
+
+        uint256 remainingBalance = userDeposits[_userToliquidate][_collateralType].minted;
+
+        if (remainingBalance > 0) {
+        //auction off the rest
+        approve(auction, remainingBalance);
+        transferFrom(_userToliquidate, auction, remainingBalance);
+        }
+
+        userDeposits[_userToliquidate][_collateralType].minted = 0;
+
+        emit Liquidated(pool, _userToliquidate, _amount);
+
     }
 }
