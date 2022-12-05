@@ -130,11 +130,9 @@ contract Chrysus is ERC20, ReentrancyGuard {
         if (_userToliquidate == address(0)) revert ZeroAddress();
         if (_collateralType == address(0)) revert ZeroAddress();
         require(_amount > 0, "amount can not be 0");
-        
-        uint256 amountOutCollateral = userDeposits[_userToliquidate][_collateralType]
-            .deposited;
-        
-        require(_amount <= amountOutCollateral, "user has no positions to liquidate");
+                
+        require(_amount <= userDeposits[_userToliquidate][_collateralType]
+            .deposited, "user has no positions to liquidate");
         _liquidate(_userToliquidate, _collateralType, _amount);
     }
 
