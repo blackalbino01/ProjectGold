@@ -126,13 +126,14 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
 
     function liquidate(address _userToliquidate, address _collateralType, uint _amount) external nonReentrant{
-        uint256 amountOutCollateral = userDeposits[_userToliquidate][_collateralType]
-            .deposited;
-        uint256 amountOutCHC = userDeposits[_userToliquidate][_collateralType].minted;
+        
         if (_userToliquidate == address(0)) revert ZeroAddress();
         if (_collateralType == address(0)) revert ZeroAddress();
         require(_amount > 0, "amount can not be 0");
-        require(amountOutCHC > 0, "user has no positions to liquidate");
+        
+        uint256 amountOutCollateral = userDeposits[_userToliquidate][_collateralType]
+            .deposited;
+        
         require(_amount <= amountOutCollateral, "user has no positions to liquidate");
         _liquidate(_userToliquidate, _collateralType, _amount);
     }
@@ -405,6 +406,8 @@ contract Chrysus is ERC20, ReentrancyGuard {
         (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
 
         uint256 amountOutCHC = userDeposits[_userToliquidate][_collateralType].minted;
+
+        require(amountOutCHC > 0, "user has no positions to liquidate");
 
         //sell collateral on swap solution at or above price of XAU
         address pool = swapSolution.getPair(address(this), _collateralType);
