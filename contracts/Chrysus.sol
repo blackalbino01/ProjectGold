@@ -247,13 +247,11 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
     }
 
+
     //withdraws collateral in exchange for a given amount of CHC tokens
     function withdrawCollateral(address _collateralType, uint256 _amount)
         external nonReentrant
     {
-
-        console.log("balance", IERC20(_collateralType).balanceOf(address(this)));
-
         //transfer CHC back to contract
         transfer(address(this), _amount);
 
@@ -355,7 +353,6 @@ contract Chrysus is ERC20, ReentrancyGuard {
                 address _pair = swapSolution.getPair(collateralType, address(this));
                 uint256 amount = DSMath.div(_fees , 5);
 
-                console.log("amount, ", amount / 1e18);
 
                 IERC20(collateralType).approve(_pair, amount);
                 IERC20(collateralType).transferFrom(address(this), _pair, amount);
@@ -429,9 +426,6 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
         _collateralType != address(0) ? approvedCollateral[_collateralType].fees += tokenFee : approvedCollateral[address(0)].fees += ethFee;
 
-        // //catch ether deposits
-        // userTokenDeposits[msg.sender][address(0)].amount += msg.value - ethFee;
-
         //catch token deposits
         userDeposits[msg.sender][_collateralType].deposited +=
             _amount -
@@ -503,5 +497,86 @@ contract Chrysus is ERC20, ReentrancyGuard {
         );
 
         emit AddedCollateralType(_collateralType);
+    }
+
+    function _liquidate(address _userToliquidate, address _collateralType, uint _amount) internal {
+        //require collateralization ratio is under liquidation ratio
+
+        collateralizationRatio = getCollateralizationRatio();
+        
+        require(
+            collateralizationRatio < liquidationRatio,
+            "cannot liquidate position"
+        );
+
+        (, int256 priceCollateral, , , ) = approvedCollateral[_collateralType]
+            .oracle
+            .latestRoundData();
+        (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
+
+        uint256 amountOutCHC = userDeposits[_userToliquidate][_collateralType].minted;
+
+        require(amountOutCHC > 0, "user has no positions to liquidate");
+
+        //sell collateral on swap solution at or above price of XAU
+        address pool = swapSolution.getPair(address(this), _collateralType);
+
+        
+        require(swapSolution.uniswapV2Call(pool, 0, _amount, ""));
+        userDeposits[_userToliquidate][_collateralType].minted -= amountOutCHC;
+        // sell collateral on uniswap at or above price of XAU
+
+        TransferHelper.safeApprove(
+            address(this),
+            address(swapRouter),
+            _amount
+        );
+
+        amountOutCHC =
+            (userDeposits[_userToliquidate][_collateralType].minted *
+                uint256(priceCollateral) *
+                100) /
+            uint256(priceXAU) /
+            10000;
+
+        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
+            .ExactOutputSingleParams({
+                tokenIn: address(this),
+                tokenOut: _collateralType,
+                fee: 3000,
+                recipient: _userToliquidate,
+                deadline: block.timestamp,
+                amountOut: amountOutCHC,
+                amountInMaximum: _amount,
+                sqrtPriceLimitX96: 0
+            });
+
+        uint256 amountIn = swapRouter.exactOutputSingle(params);
+
+        if (amountIn < _amount) {
+            TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
+            TransferHelper.safeTransfer(
+                address(this),
+                _userToliquidate,
+                _amount - amountIn
+            );
+
+            _amount = amountIn;
+        }
+
+        userDeposits[_userToliquidate][_collateralType].minted -= _amount;
+
+        uint256 remainingBalance = userDeposits[_userToliquidate][_collateralType].minted;
+
+        if (remainingBalance > 0) {
+        //auction off the rest
+        approve(auction, remainingBalance);
+        transferFrom(_userToliquidate, auction, remainingBalance);
+        }
+
+        userDeposits[_userToliquidate][_collateralType].minted = 0;
+
+        emit Liquidated(pool, _userToliquidate, _amount);
+
     }
 }

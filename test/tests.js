@@ -171,8 +171,7 @@ describe("Chrysus tests", function () {
     // await chrysus.connect(daiHolder).depositCollateral(DAI, userDeposit)
 
     await mockOracle.setValue(BigInt(1E25))
-
-    await chrysus.connect(daiHolder).liquidate(DAI)
+    await chrysus.connect(daiHolder).liquidate(DAI_HOLDER,DAI, BigInt(1E18))
     
 
   }),
