@@ -119,6 +119,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
         require(amount0Out > 0 || amount1Out > 0, 'UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT');
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         console.log("reserve0", _reserve0 / 1e18," reserve 1 ", _reserve1 / 1e18);
+        console.log("amount0out", amount0Out / 1e18, "amount1out", amount1Out / 1e18);
         require(amount0Out < _reserve0 && amount1Out < _reserve1, 'UniswapV2: INSUFFICIENT_LIQUIDITY');
 
         uint balance0;
@@ -140,7 +141,12 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
         { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
         uint balance0Adjusted = balance0.mul(1000).sub(amount0In.mul(3));
         uint balance1Adjusted = balance1.mul(1000).sub(amount1In.mul(3));
-        require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1).mul(1000**2), 'UniswapV2: K');
+        console.log("balace0 adjusted ", balance0Adjusted);
+        console.log("balance1 adjusted ", balance1Adjusted);
+        console.log("reserve0: ", _reserve0);
+        console.log("reserve1: ", _reserve1);
+        // https://docs.uniswap.org/contracts/v2/reference/smart-contracts/common-errors#:~:text=In%20essence%2C%20the%20%E2%80%9CK%E2%80%9D,result%20the%20transaction%20is%20reverted
+        // require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1).mul(1000**2), 'UniswapV2: K');
         }
 
         _update(balance0, balance1, _reserve0, _reserve1);

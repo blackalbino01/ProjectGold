@@ -11,6 +11,7 @@ describe("Chrysus tests", function () {
   const GOLD_FEED = "0x214ed9da11d2fbe465a6fc601a91e62ebec1a0d6"
   const UNI_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
   const DAI_HOLDER = "0x6262998ced04146fa42253a5c0af90ca02dfd2a3"
+  const UNI_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 
 
   let chrysus, mockOracle, swap, mockStabilityModule, governance, mockLending, pair
@@ -18,6 +19,8 @@ describe("Chrysus tests", function () {
   let accounts
   let treasury, auction
   let daiHolder
+  let uniFactory
+  let liquidatorRatio = 1
 
   beforeEach(async function () {
 
@@ -55,18 +58,20 @@ describe("Chrysus tests", function () {
     // We get the contract to deploy
     const Chrysus = await hre.ethers.getContractFactory("Chrysus");
     chrysus = await Chrysus.deploy(
-      DAI, //dai on rinkeby
-      DAI_FEED, //dai/usd feed on rinkeby
-      ETH_FEED, //eth/usd feed on rinkeby
-      mockOracle.address, //chc/usd signer
-      GOLD_FEED, //xau/usd feed on rinkeby
-      governance.address, //governance signer
-      treasury.address,
-      auction.address,
-      UNI_ROUTER, //uniswap router on rinkeby (same on mainnet),
-      swap.address,
-      mockStabilityModule.address // stability module
-  
+      liquidatorRatio,
+      [
+        DAI, //dai on rinkeby
+        DAI_FEED, //dai/usd feed on rinkeby
+        ETH_FEED, //eth/usd feed on rinkeby
+        mockOracle.address, //chc/usd signer
+        GOLD_FEED, //xau/usd feed on rinkeby
+        governance.address, //governance signer
+        treasury.address,
+        auction.address,
+        UNI_ROUTER, //uniswap router on rinkeby (same on mainnet),
+        swap.address,
+        mockStabilityModule.address // stability module
+      ]
     );
   
     await chrysus.deployed();
@@ -119,12 +124,17 @@ describe("Chrysus tests", function () {
     DAI
   )
 
-
-	});
+  uniFactory = await ethers.getContractAt(
+    "contracts/interfaces/IUniswapV3Factory.sol:IUniswapV3Factory",
+    UNI_FACTORY
+  )
+  })
 
   it("liquidate", async function () {
 
     //add liquidity to swap solution
+    const POOL_CHC_DAI = await uniFactory.callStatic.createPool(chrysus.address, DAI, 3000)
+    await uniFactory.connect(daiHolder).createPool(chrysus.address, DAI, 3000)
 
     await mockOracle.setValue(BigInt(1769E18))
 
@@ -136,9 +146,11 @@ describe("Chrysus tests", function () {
 
     let balance = await chrysus.balanceOf(DAI_HOLDER)
 
-    await chrysus.connect(daiHolder).transfer(pair.address, BigInt(balance))
+    await chrysus.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
+    await dai.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
 
-    // await pair.connect(daiHolder).mint(DAI_HOLDER)
+    await chrysus.connect(daiHolder).transfer(pair.address, BigInt(balance / 2))
+    await dai.connect(daiHolder).transfer(pair.address, BigInt(balance / 2))
 
     await dai.connect(daiHolder).transfer(team.address, BigInt(3E22))
 
@@ -163,7 +175,7 @@ describe("Chrysus tests", function () {
     await chrysus.connect(daiHolder).liquidate(DAI)
     
 
-  });
+  }),
 
   it("depositCollateral", async function () {
 
@@ -257,4 +269,4 @@ describe("Chrysus tests", function () {
   it("mints set amount daily", async function() {
 
   })
-});
+})

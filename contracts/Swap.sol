@@ -56,10 +56,6 @@ contract Swap is ISwapFactory {
     function uniswapV2Call(address sender, uint amount0, uint amount1, bytes memory data) external override returns (bool) {
         address token0 = IUniswapV2Pair(sender).token0(); // fetch the address of token0
         address token1 = IUniswapV2Pair(sender).token1(); // fetch the address of token1
-        console.log("token 0 ", token0);
-        console.log("token 1: ", token1);
-        console.log(msg.sender);
-        console.log(getPair[token0][token1]);
         assert(sender == getPair[token0][token1]); // ensure that msg.sender is a V2 pair
 
         return true;
