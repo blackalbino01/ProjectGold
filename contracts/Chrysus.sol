@@ -92,19 +92,19 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
         liquidationReward = _liquidationReward;
 
-        _addCollateralType(_daiAddress, 267, _oracleDAI);
-        _addCollateralType(address(0), 120, _oracleETH);
+        _addCollateralType(_ab.daiAddress, 267, _ab.oracleDAI);
+        _addCollateralType(address(0), 120, _ab.oracleETH);
 
-        oracleCHC = AggregatorV3Interface(_oracleCHC);
-        oracleXAU = AggregatorV3Interface(_oracleXAU);
+        oracleCHC = AggregatorV3Interface(_ab.oracleCHC);
+        oracleXAU = AggregatorV3Interface(_ab.oracleXAU);
 
-        governance = _governance;
-        treasury = _treasury;
-        auction = _auction;
+        governance = _ab.governance;
+        treasury = _ab.treasury;
+        auction = _ab.auction;
 
-        swapRouter = ISwapRouter(_swapRouter);
-        swapSolution = ISwap(_swapSolution);
-        stabilityModule = IStabilityModule(_stabilityModule);
+        swapRouter = ISwapRouter(_ab.swapRouter);
+        swapSolution = ISwap(_ab.swapSolution);
+        stabilityModule = IStabilityModule(_ab.stabilityModule);
     }
 
     //for depositing ETH as collateral
