@@ -129,22 +129,28 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
         address _token1 = token1;
         require(to != _token0 && to != _token1, 'UniswapV2: INVALID_TO');
         console.log("amount1 out", amount1Out / 1e18);
+        console.log("amount0 out", amount0Out / 1e18);
+        console.log("reserve0: ", _reserve0 / 1e18);
+        console.log("reserve1: ", _reserve1 /1e18);
         if (amount0Out > 0) _safeTransfer(_token0, to, amount0Out); // optimistically transfer tokens
         if (amount1Out > 0) _safeTransfer(_token1, to, amount1Out); // optimistically transfer tokens
         if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data);
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
+        console.log("balance0", balance0 / 1e18);
+        console.log("balance1", balance1 / 1e18);
         }
         uint amount0In = balance0 > _reserve0 - amount0Out ? balance0 - (_reserve0 - amount0Out) : 0;
         uint amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
+        console.log("diff", _reserve0 - amount0Out);
+        console.log("amount0In", amount0In / 1e18);
         require(amount0In > 0 || amount1In > 0, 'UniswapV2: INSUFFICIENT_INPUT_AMOUNT');
         { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
         uint balance0Adjusted = balance0.mul(1000).sub(amount0In.mul(3));
         uint balance1Adjusted = balance1.mul(1000).sub(amount1In.mul(3));
         console.log("balace0 adjusted ", balance0Adjusted);
         console.log("balance1 adjusted ", balance1Adjusted);
-        console.log("reserve0: ", _reserve0);
-        console.log("reserve1: ", _reserve1);
+
         // https://docs.uniswap.org/contracts/v2/reference/smart-contracts/common-errors#:~:text=In%20essence%2C%20the%20%E2%80%9CK%E2%80%9D,result%20the%20transaction%20is%20reverted
         // require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1).mul(1000**2), 'UniswapV2: K');
         }

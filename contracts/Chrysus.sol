@@ -27,6 +27,9 @@ contract Chrysus is ERC20, ReentrancyGuard {
     address public treasury;
     address public auction;
 
+    bool liquidated;
+    address liquidator;
+
     AggregatorV3Interface public oracleCHC;
     AggregatorV3Interface public oracleXAU;
 
@@ -141,6 +144,11 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
         require(_amount <= userDeposits[_userToliquidate][_collateralType]
             .deposited, "user has no positions to liquidate");
+
+        if (!liquidated) {
+            liquidated = true;
+            liquidator = msg.sender;
+        }  
         _liquidate(_userToliquidate, _collateralType, _amount);
     }
 
@@ -355,6 +363,13 @@ contract Chrysus is ERC20, ReentrancyGuard {
         address pool = swapSolution.getPair(address(this), _collateralType);
         
         require(swapSolution.uniswapV2Call(pool, 0, _amount, ""));
+        uint liquidatorOneTimeReward = _amount * liquidationRatio / 100 / 1e8;
+        console.log("liquidatorOneTimeReward", liquidatorOneTimeReward / 1e18);
+        console.log("_amount", _amount / 1e18);
+        console.log("swap 1");
+        IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 1, liquidator, "");
+        console.log("swap 2");
+        IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 1, _userToliquidate, "");
         userDeposits[_userToliquidate][_collateralType].minted -= amountOutCHC;
         // sell collateral on uniswap at or above price of XAU
         TransferHelper.safeApprove(

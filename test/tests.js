@@ -138,13 +138,26 @@ describe("Chrysus tests", function () {
 
     await mockOracle.setValue(BigInt(1769E18))
 
+    let bigDaiHolder2 = await ethers.getImpersonatedSigner("0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8");
+    await dai.connect(bigDaiHolder2).approve(pair.address, BigInt(1E20))
+    await dai.connect(bigDaiHolder2).transferFrom("0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8", pair.address, BigInt(1E20))
+
+    await dai.connect(bigDaiHolder2).approve(chrysus.address, BigInt(1E24))
+    await chrysus.connect(bigDaiHolder2).depositCollateral(DAI, BigInt(1E24))
+
     await dai.connect(daiHolder).approve(pair.address, BigInt(1E20))
-    await dai.connect(daiHolder).transferFrom(DAI_HOLDER, pair.address, BigInt(1E20))
+    await dai.connect(daiHolder).transferFrom(DAI_HOLDER, pair.address, BigInt(1E21))
 
     await dai.connect(daiHolder).approve(chrysus.address, BigInt(1E20))
     await chrysus.connect(daiHolder).depositCollateral(DAI, BigInt(1E20))
 
-    let balance = await chrysus.balanceOf(DAI_HOLDER)
+    let balance = await chrysus.balanceOf("0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8")
+
+    console.log("balance", balance / Number(1E18))
+
+    await chrysus.connect(bigDaiHolder2).transfer(POOL_CHC_DAI, balance)
+
+    balance = await chrysus.balanceOf(DAI_HOLDER)
 
     await chrysus.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
     await dai.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
@@ -162,7 +175,7 @@ describe("Chrysus tests", function () {
 
     await pair.connect(team).mint(team.address)
 
-    await dai.connect(daiHolder).transfer(pair.address, BigInt(1E19))
+    await dai.connect(daiHolder).transfer(pair.address, BigInt(1E21))
 
     await mockOracle.setValue(BigInt(1769E18))
 
@@ -171,7 +184,7 @@ describe("Chrysus tests", function () {
     // await chrysus.connect(daiHolder).depositCollateral(DAI, userDeposit)
 
     await mockOracle.setValue(BigInt(1E25))
-    await chrysus.connect(daiHolder).liquidate(DAI_HOLDER,DAI, BigInt(1E18))
+    await chrysus.connect(daiHolder).liquidate(DAI_HOLDER,DAI, BigInt(10E18))
     
 
   }),
