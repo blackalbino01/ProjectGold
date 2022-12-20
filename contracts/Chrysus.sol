@@ -185,6 +185,14 @@ contract Chrysus is ERC20, ReentrancyGuard {
         }
         emit CollateralWithdrawn(msg.sender, _amount);
     }
+
+    function updateLiquidatorReward(uint256 _newReward) external {
+        require(
+            msg.sender == governance,
+            "can only be called by CGT governance"
+        );
+        liquidationReward = _newReward;
+    }
     // slither-disable-next-line arbitrary-send
     function withdrawFees() external {
         //30% to treasury
