@@ -435,7 +435,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         
         require(swapSolution.uniswapV2Call(pool, 0, _amount, ""));
         IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 1, msg.sender, "");
-        IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 1, _userToliquidate, "");
+        IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 1, _userToliquidate, "");
         userDeposits[_userToliquidate][_collateralType].minted -= amountOutCHC;
         // sell collateral on uniswap at or above price of XAU
 
