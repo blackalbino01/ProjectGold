@@ -20,6 +20,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
     uint256 public liquidationRatio;
     uint256 public collateralizationRatio;
+    uint256 private liquidationReward; // in percentage points
     
     address[] public approvedTokens;
     address public governance;
@@ -48,6 +49,20 @@ contract Chrysus is ERC20, ReentrancyGuard {
         uint256 minted;
     }
 
+    struct AddressBook {
+        address daiAddress;
+        address oracleDAI;
+        address oracleETH;
+        address oracleCHC;
+        address oracleXAU;
+        address governance;
+        address treasury;
+        address auction;
+        address swapRouter;
+        address swapSolution;
+        address stabilityModule;
+    }
+
     /// @notice Thrown when address zero is provided
     error ZeroAddress();
 
@@ -60,45 +75,39 @@ contract Chrysus is ERC20, ReentrancyGuard {
     event AddedCollateralType(address indexed collateralToken);
     event Liquidated(address indexed liquidator, address indexed user, uint256 amountLiquidated);
     event FeesWithdrawn(uint256 indexed treasuryFees, uint256 indexed swapSolutionFees, uint256 indexed stabilityModuleFees);
+    event LiquidationRewardUpdated(uint256 newReward);
 
     constructor(
-        address _daiAddress,
-        address _oracleDAI,
-        address _oracleETH,
-        address _oracleCHC,
-        address _oracleXAU,
-        address _governance,
-        address _treasury,
-        address _auction,
-        address _swapRouter,
-        address _swapSolution,
-        address _stabilityModule
+        AddressBook memory _ab,
+        uint256 _liquidationReward
     ) ERC20("Chrysus", "CHC") {
-        if (_daiAddress == address(0)) revert ZeroAddress();
-        if (_oracleDAI == address(0)) revert ZeroAddress();
-        if (_oracleETH == address(0)) revert ZeroAddress();
-        if (_oracleXAU == address(0)) revert ZeroAddress();
-        if (_governance == address(0)) revert ZeroAddress();
-        if (_treasury == address(0)) revert ZeroAddress();
-        if (_auction == address(0)) revert ZeroAddress();
-        if (_swapSolution == address(0)) revert ZeroAddress();
-        if (_stabilityModule == address(0)) revert ZeroAddress();
+        if (_ab.daiAddress == address(0)) revert ZeroAddress();
+        if (_ab.oracleDAI == address(0)) revert ZeroAddress();
+        if (_ab.oracleETH == address(0)) revert ZeroAddress();
+        if (_ab.oracleCHC == address(0)) revert ZeroAddress();
+        if (_ab.oracleXAU == address(0)) revert ZeroAddress();
+        if (_ab.governance == address(0)) revert ZeroAddress();
+        if (_ab.treasury == address(0)) revert ZeroAddress();
+        if (_ab.auction == address(0)) revert ZeroAddress();
+        if (_ab.swapSolution == address(0)) revert ZeroAddress();
+        if (_ab.stabilityModule == address(0)) revert ZeroAddress();
         liquidationRatio = 110e6;
 
-        _addCollateralType(_daiAddress, 267, _oracleDAI);
-        _addCollateralType(address(0), 120, _oracleETH);
+        liquidationReward = _liquidationReward;
 
-        oracleCHC = AggregatorV3Interface(_oracleCHC);
-        oracleXAU = AggregatorV3Interface(_oracleXAU);
+        _addCollateralType(_ab.daiAddress, 267, _ab.oracleDAI);
+        _addCollateralType(address(0), 120, _ab.oracleETH);
 
-        governance = _governance;
-        treasury = _treasury;
-        auction = _auction;
+        oracleCHC = AggregatorV3Interface(_ab.oracleCHC);
+        oracleXAU = AggregatorV3Interface(_ab.oracleXAU);
 
-        swapRouter = ISwapRouter(_swapRouter);
+        governance = _ab.governance;
+        treasury = _ab.treasury;
+        auction = _ab.auction;
 
-        swapSolution = ISwap(_swapSolution);
-        stabilityModule = IStabilityModule(_stabilityModule);
+        swapRouter = ISwapRouter(_ab.swapRouter);
+        swapSolution = ISwap(_ab.swapSolution);
+        stabilityModule = IStabilityModule(_ab.stabilityModule);
     }
 
 
@@ -262,6 +271,17 @@ contract Chrysus is ERC20, ReentrancyGuard {
     }
 
 
+    function updateLiquidatorReward(uint256 _newReward) external {
+        require(
+            msg.sender == governance,
+            "can only be called by CGT governance"
+        );
+        liquidationReward = _newReward;
+
+        emit LiquidationRewardUpdated(_newReward);
+    }
+
+
     function getCollateralizationRatio() public view returns (uint256) {
         //get CHC price using oracle
         (, int256 priceCHC, , , ) = oracleCHC.latestRoundData();
@@ -407,11 +427,15 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
         require(amountOutCHC > 0, "user has no positions to liquidate");
 
+        uint liquidatorOneTimeReward = _amount * liquidationReward / 100;
+
         //sell collateral on swap solution at or above price of XAU
         address pool = swapSolution.getPair(address(this), _collateralType);
 
         
         require(swapSolution.uniswapV2Call(pool, 0, _amount, ""));
+        IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 1, msg.sender, "");
+        IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 1, _userToliquidate, "");
         userDeposits[_userToliquidate][_collateralType].minted -= amountOutCHC;
         // sell collateral on uniswap at or above price of XAU
 

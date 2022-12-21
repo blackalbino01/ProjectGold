@@ -18,6 +18,7 @@ describe("Chrysus tests", function () {
   let accounts
   let treasury, auction
   let daiHolder
+  let liquidatorRatio = 1
 
   beforeEach(async function () {
 
@@ -55,7 +56,7 @@ describe("Chrysus tests", function () {
     // We get the contract to deploy
     const Chrysus = await hre.ethers.getContractFactory("Chrysus");
     chrysus = await Chrysus.deploy(
-      DAI, //dai on rinkeby
+      [DAI, //dai on rinkeby
       DAI_FEED, //dai/usd feed on rinkeby
       ETH_FEED, //eth/usd feed on rinkeby
       mockOracle.address, //chc/usd signer
@@ -65,7 +66,8 @@ describe("Chrysus tests", function () {
       auction.address,
       UNI_ROUTER, //uniswap router on rinkeby (same on mainnet),
       swap.address,
-      mockStabilityModule.address // stability module
+      mockStabilityModule.address], // stability module
+      liquidatorRatio
   
     );
   
