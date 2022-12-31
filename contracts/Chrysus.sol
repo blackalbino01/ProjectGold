@@ -149,6 +149,9 @@ contract Chrysus is ERC20, ReentrancyGuard {
             liquidated = true;
             liquidator = msg.sender;
         }  
+
+        transferFrom(msg.sender, address(this), _amount);
+
         _liquidate(_userToliquidate, _collateralType, _amount);
     }
 
@@ -375,9 +378,13 @@ contract Chrysus is ERC20, ReentrancyGuard {
         console.log("liquidatorOneTimeReward", liquidatorOneTimeReward / 1e18);
         console.log("_amount", _amount / 1e18);
         console.log("swap 1");
-        IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 1, liquidator, "");
-        console.log("swap 2");
-        IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 1, _userToliquidate, "");
+        console.log("allowance: ", allowance(msg.sender, address(this)) / 1e18);
+        console.log("CHC balance: ", balanceOf(address(this)));
+        transfer(pool, amountOutCHC);
+        IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 0, _userToliquidate, "");
+        IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 0, liquidator, "");
+        // IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 1, _userToliquidate, "");
+
         userDeposits[_userToliquidate][_collateralType].minted -= amountOutCHC;
         // sell collateral on uniswap at or above price of XAU
         TransferHelper.safeApprove(

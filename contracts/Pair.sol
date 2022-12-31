@@ -142,7 +142,7 @@ contract Pair is IUniswapV2Pair, SwapERC20 {
         }
         uint amount0In = balance0 > _reserve0 - amount0Out ? balance0 - (_reserve0 - amount0Out) : 0;
         uint amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
-        console.log("diff", _reserve0 - amount0Out);
+        console.log("diff", (_reserve0 - amount0Out) /1e18);
         console.log("amount0In", amount0In / 1e18);
         require(amount0In > 0 || amount1In > 0, 'UniswapV2: INSUFFICIENT_INPUT_AMOUNT');
         { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
