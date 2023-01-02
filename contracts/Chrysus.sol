@@ -19,8 +19,8 @@ import {IGovernance} from "contracts/interfaces/IGovernance.sol";
 contract Chrysus is ERC20, ReentrancyGuard {
     using DSMath for uint;
     uint256 public liquidationRatio;
-    uint256 private liquidationReward; // in percentage points
     uint256 public collateralizationRatio;
+    uint256 private liquidationReward; // in percentage points
     
     address[] public approvedTokens;
     address public governance;
@@ -76,10 +76,11 @@ contract Chrysus is ERC20, ReentrancyGuard {
     event AddedCollateralType(address indexed collateralToken);
     event Liquidated(address indexed liquidator, address indexed user, uint256 amountLiquidated);
     event FeesWithdrawn(uint256 indexed treasuryFees, uint256 indexed swapSolutionFees, uint256 indexed stabilityModuleFees);
+    event LiquidationRewardUpdated(uint256 newReward);
 
     constructor(
-        uint256 _liquidationReward, //in percentage points
-        AddressBook memory _ab
+        AddressBook memory _ab,
+        uint256 _liquidationReward
     ) ERC20("Chrysus", "CHC") {
         if (_ab.daiAddress == address(0)) revert ZeroAddress();
         if (_ab.oracleDAI == address(0)) revert ZeroAddress();
@@ -184,13 +185,6 @@ contract Chrysus is ERC20, ReentrancyGuard {
         emit CollateralWithdrawn(msg.sender, _amount);
     }
 
-    function updateLiquidatorReward(uint256 _newReward) external {
-        require(
-            msg.sender == governance,
-            "can only be called by CGT governance"
-        );
-        liquidationReward = _newReward;
-    }
     // slither-disable-next-line arbitrary-send
     function withdrawFees() external {
         //30% to treasury
@@ -254,6 +248,19 @@ contract Chrysus is ERC20, ReentrancyGuard {
             }
         }
     }
+
+
+    function updateLiquidatorReward(uint256 _newReward) external {
+        require(
+            msg.sender == governance,
+            "can only be called by CGT governance"
+        );
+        liquidationReward = _newReward;
+
+        emit LiquidationRewardUpdated(_newReward);
+    }
+
+
     function getCollateralizationRatio() public view returns (uint256) {
         //get CHC price using oracle
         (, int256 priceCHC, , , ) = oracleCHC.latestRoundData();
@@ -365,6 +372,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
         (, int256 priceXAU, , , ) = oracleXAU.latestRoundData();
         uint256 amountOutCHC = userDeposits[_userToliquidate][_collateralType].minted;
         require(amountOutCHC > 0, "user has no positions to liquidate");
+
         //sell collateral on swap solution at or above price of XAU
         address pool = swapSolution.getPair(address(this), _collateralType);
 
@@ -375,15 +383,15 @@ contract Chrysus is ERC20, ReentrancyGuard {
         console.log("_amount", _amount / 1e18);
         console.log("swap 1");
         console.log("allowance: ", allowance(_userToliquidate, address(this)) / 1e18);
-        console.log("CHC balance: ", balanceOf(address(this)));
-        transferFrom(_userToliquidate, pool, _amount);
-
+        console.log("CHC balance: ", balanceOf(_userToliquidate) / 1e18);
+        uint256 balBefore = balanceOf(pool);
         IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 0, _userToliquidate, "");
+        IERC20(address(this)).transferFrom(_userToliquidate, pool, _amount);
         IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 0, liquidator, "");
-        // IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 1, _userToliquidate, "");
-
-        userDeposits[_userToliquidate][_collateralType].minted -= amountOutCHC;
+        uint256 amountLiquidated = balanceOf(pool) - balBefore;
         // sell collateral on uniswap at or above price of XAU
+
+        if (amountLiquidated < _amount) {
         TransferHelper.safeApprove(
             address(this),
             address(swapRouter),
@@ -425,5 +433,6 @@ contract Chrysus is ERC20, ReentrancyGuard {
         }
         userDeposits[_userToliquidate][_collateralType].minted = 0;
         emit Liquidated(pool, _userToliquidate, _amount);
+        }
     }
 }

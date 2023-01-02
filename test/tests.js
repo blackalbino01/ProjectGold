@@ -58,20 +58,19 @@ describe("Chrysus tests", function () {
     // We get the contract to deploy
     const Chrysus = await hre.ethers.getContractFactory("Chrysus");
     chrysus = await Chrysus.deploy(
-      liquidatorRatio,
-      [
-        DAI, //dai on rinkeby
-        DAI_FEED, //dai/usd feed on rinkeby
-        ETH_FEED, //eth/usd feed on rinkeby
-        mockOracle.address, //chc/usd signer
-        GOLD_FEED, //xau/usd feed on rinkeby
-        governance.address, //governance signer
-        treasury.address,
-        auction.address,
-        UNI_ROUTER, //uniswap router on rinkeby (same on mainnet),
-        swap.address,
-        mockStabilityModule.address // stability module
-      ]
+      [DAI, //dai on rinkeby
+      DAI_FEED, //dai/usd feed on rinkeby
+      ETH_FEED, //eth/usd feed on rinkeby
+      mockOracle.address, //chc/usd signer
+      GOLD_FEED, //xau/usd feed on rinkeby
+      governance.address, //governance signer
+      treasury.address,
+      auction.address,
+      UNI_ROUTER, //uniswap router on rinkeby (same on mainnet),
+      swap.address,
+      mockStabilityModule.address], // stability module
+      liquidatorRatio
+  
     );
   
     await chrysus.deployed();
@@ -148,8 +147,8 @@ describe("Chrysus tests", function () {
     await dai.connect(daiHolder).approve(pair.address, BigInt(1E20))
     await dai.connect(daiHolder).transferFrom(DAI_HOLDER, pair.address, BigInt(1E21))
 
-    await dai.connect(daiHolder).approve(chrysus.address, BigInt(1E20))
-    await chrysus.connect(daiHolder).depositCollateral(DAI, BigInt(1E20))
+    await dai.connect(daiHolder).approve(chrysus.address, BigInt(5E22))
+    await chrysus.connect(daiHolder).depositCollateral(DAI, BigInt(5E22))
 
     let balance = await chrysus.balanceOf("0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8")
 
@@ -185,8 +184,8 @@ describe("Chrysus tests", function () {
 
     await mockOracle.setValue(BigInt(1E25))
 
-    await chrysus.connect(daiHolder).approve(chrysus.address, BigInt(10E18))
-    await chrysus.connect(daiHolder).liquidate(DAI_HOLDER,DAI, BigInt(10E18))
+    await chrysus.connect(daiHolder).approve(chrysus.address, BigInt(1E18))
+    await chrysus.connect(daiHolder).liquidate(DAI_HOLDER,DAI, BigInt(1E18))
     
 
   }),
