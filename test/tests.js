@@ -159,7 +159,7 @@ describe("Chrysus tests", function () {
 
     balance = await chrysus.balanceOf(DAI_HOLDER)
 
-    await chrysus.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
+    // await chrysus.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
     await dai.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
 
     await chrysus.connect(daiHolder).transfer(pair.address, BigInt(balance / 2))

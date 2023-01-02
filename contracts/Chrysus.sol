@@ -142,15 +142,10 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
         require(_amount <= amountOutCollateral, "user has no positions to liquidate");
 
-        require(_amount <= userDeposits[_userToliquidate][_collateralType]
-            .deposited, "user has no positions to liquidate");
-
         if (!liquidated) {
             liquidated = true;
             liquidator = msg.sender;
         }  
-
-        transferFrom(msg.sender, address(this), _amount);
 
         _liquidate(_userToliquidate, _collateralType, _amount);
     }
@@ -372,15 +367,17 @@ contract Chrysus is ERC20, ReentrancyGuard {
         require(amountOutCHC > 0, "user has no positions to liquidate");
         //sell collateral on swap solution at or above price of XAU
         address pool = swapSolution.getPair(address(this), _collateralType);
+
         
         require(swapSolution.uniswapV2Call(pool, 0, _amount, ""));
         uint liquidatorOneTimeReward = _amount * liquidationRatio / 100 / 1e8;
         console.log("liquidatorOneTimeReward", liquidatorOneTimeReward / 1e18);
         console.log("_amount", _amount / 1e18);
         console.log("swap 1");
-        console.log("allowance: ", allowance(msg.sender, address(this)) / 1e18);
+        console.log("allowance: ", allowance(_userToliquidate, address(this)) / 1e18);
         console.log("CHC balance: ", balanceOf(address(this)));
-        transfer(pool, amountOutCHC);
+        transferFrom(_userToliquidate, pool, _amount);
+
         IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 0, _userToliquidate, "");
         IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 0, liquidator, "");
         // IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 1, _userToliquidate, "");
