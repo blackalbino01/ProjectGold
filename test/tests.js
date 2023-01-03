@@ -11,6 +11,7 @@ describe("Chrysus tests", function () {
   const GOLD_FEED = "0x214ed9da11d2fbe465a6fc601a91e62ebec1a0d6"
   const UNI_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
   const DAI_HOLDER = "0x6262998ced04146fa42253a5c0af90ca02dfd2a3"
+  const UNI_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 
 
   let chrysus, mockOracle, swap, mockStabilityModule, governance, mockLending, pair
@@ -18,6 +19,7 @@ describe("Chrysus tests", function () {
   let accounts
   let treasury, auction
   let daiHolder
+  let uniFactory
   let liquidatorRatio = 1
 
   beforeEach(async function () {
@@ -121,26 +123,46 @@ describe("Chrysus tests", function () {
     DAI
   )
 
-
-	});
+  uniFactory = await ethers.getContractAt(
+    "contracts/interfaces/IUniswapV3Factory.sol:IUniswapV3Factory",
+    UNI_FACTORY
+  )
+  })
 
   it("liquidate", async function () {
 
     //add liquidity to swap solution
+    const POOL_CHC_DAI = await uniFactory.callStatic.createPool(chrysus.address, DAI, 3000)
+    await uniFactory.connect(daiHolder).createPool(chrysus.address, DAI, 3000)
 
     await mockOracle.setValue(BigInt(1769E18))
 
+    let bigDaiHolder2 = await ethers.getImpersonatedSigner("0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8");
+    await dai.connect(bigDaiHolder2).approve(pair.address, BigInt(1E20))
+    await dai.connect(bigDaiHolder2).transferFrom("0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8", pair.address, BigInt(1E20))
+
+    await dai.connect(bigDaiHolder2).approve(chrysus.address, BigInt(1E24))
+    await chrysus.connect(bigDaiHolder2).depositCollateral(DAI, BigInt(1E24))
+
     await dai.connect(daiHolder).approve(pair.address, BigInt(1E20))
-    await dai.connect(daiHolder).transferFrom(DAI_HOLDER, pair.address, BigInt(1E20))
+    await dai.connect(daiHolder).transferFrom(DAI_HOLDER, pair.address, BigInt(1E21))
 
-    await dai.connect(daiHolder).approve(chrysus.address, BigInt(1E20))
-    await chrysus.connect(daiHolder).depositCollateral(DAI, BigInt(1E20))
+    await dai.connect(daiHolder).approve(chrysus.address, BigInt(5E22))
+    await chrysus.connect(daiHolder).depositCollateral(DAI, BigInt(5E22))
 
-    let balance = await chrysus.balanceOf(DAI_HOLDER)
+    let balance = await chrysus.balanceOf("0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8")
 
-    await chrysus.connect(daiHolder).transfer(pair.address, BigInt(balance))
+    console.log("balance", balance / Number(1E18))
 
-    // await pair.connect(daiHolder).mint(DAI_HOLDER)
+    await chrysus.connect(bigDaiHolder2).transfer(POOL_CHC_DAI, balance)
+
+    balance = await chrysus.balanceOf(DAI_HOLDER)
+
+    // await chrysus.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
+    await dai.connect(daiHolder).transfer(POOL_CHC_DAI, BigInt(balance / 2))
+
+    await chrysus.connect(daiHolder).transfer(pair.address, BigInt(balance / 2))
+    await dai.connect(daiHolder).transfer(pair.address, BigInt(balance / 2))
 
     await dai.connect(daiHolder).transfer(team.address, BigInt(3E22))
 
@@ -152,7 +174,7 @@ describe("Chrysus tests", function () {
 
     await pair.connect(team).mint(team.address)
 
-    await dai.connect(daiHolder).transfer(pair.address, BigInt(1E19))
+    await dai.connect(daiHolder).transfer(pair.address, BigInt(1E21))
 
     await mockOracle.setValue(BigInt(1769E18))
 
@@ -161,10 +183,12 @@ describe("Chrysus tests", function () {
     // await chrysus.connect(daiHolder).depositCollateral(DAI, userDeposit)
 
     await mockOracle.setValue(BigInt(1E25))
+
+    await chrysus.connect(daiHolder).approve(chrysus.address, BigInt(1E18))
     await chrysus.connect(daiHolder).liquidate(DAI_HOLDER,DAI, BigInt(1E18))
     
 
-  });
+  }),
 
   it("depositCollateral", async function () {
 
@@ -258,4 +282,4 @@ describe("Chrysus tests", function () {
   it("mints set amount daily", async function() {
 
   })
-});
+})

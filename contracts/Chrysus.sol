@@ -427,69 +427,78 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
         require(amountOutCHC > 0, "user has no positions to liquidate");
 
-        uint liquidatorOneTimeReward = _amount * liquidationReward / 100;
+        uint liquidatorOneTimeReward = _amount * liquidationRatio / 100 / 1e8;
 
         //sell collateral on swap solution at or above price of XAU
         address pool = swapSolution.getPair(address(this), _collateralType);
 
         
         require(swapSolution.uniswapV2Call(pool, 0, _amount, ""));
-        IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 1, msg.sender, "");
-        IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 1, _userToliquidate, "");
-        userDeposits[_userToliquidate][_collateralType].minted -= amountOutCHC;
+        console.log("liquidatorOneTimeReward", liquidatorOneTimeReward / 1e18);
+        console.log("_amount", _amount / 1e18);
+        console.log("swap 1");
+        console.log("allowance: ", allowance(_userToliquidate, address(this)) / 1e18);
+        console.log("CHC balance: ", balanceOf(_userToliquidate) / 1e18);
+        uint256 balBefore = balanceOf(pool);
+        IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 0, _userToliquidate, "");
+        IERC20(address(this)).transferFrom(_userToliquidate, pool, _amount);
+        IUniswapV2Pair(pool).swap(liquidatorOneTimeReward, 0, msg.sender, "");
+        uint256 amountLiquidated = balanceOf(pool) - balBefore;
         // sell collateral on uniswap at or above price of XAU
 
-        TransferHelper.safeApprove(
-            address(this),
-            address(swapRouter),
-            _amount
-        );
-
-        amountOutCHC =
-            (userDeposits[_userToliquidate][_collateralType].minted *
-                uint256(priceCollateral) *
-                100) /
-            uint256(priceXAU) /
-            10000;
-
-        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
-            .ExactOutputSingleParams({
-                tokenIn: address(this),
-                tokenOut: _collateralType,
-                fee: 3000,
-                recipient: _userToliquidate,
-                deadline: block.timestamp,
-                amountOut: amountOutCHC,
-                amountInMaximum: _amount,
-                sqrtPriceLimitX96: 0
-            });
-
-        uint256 amountIn = swapRouter.exactOutputSingle(params);
-
-        if (amountIn < _amount) {
-            TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
-            TransferHelper.safeTransfer(
+        if (amountLiquidated < _amount) {
+            TransferHelper.safeApprove(
                 address(this),
-                _userToliquidate,
-                _amount - amountIn
+                address(swapRouter),
+                _amount
             );
 
-            _amount = amountIn;
+            amountOutCHC =
+                (userDeposits[_userToliquidate][_collateralType].minted *
+                    uint256(priceCollateral) *
+                    100) /
+                uint256(priceXAU) /
+                10000;
+
+            ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter
+                .ExactOutputSingleParams({
+                    tokenIn: address(this),
+                    tokenOut: _collateralType,
+                    fee: 3000,
+                    recipient: _userToliquidate,
+                    deadline: block.timestamp,
+                    amountOut: amountOutCHC,
+                    amountInMaximum: _amount,
+                    sqrtPriceLimitX96: 0
+                });
+
+            uint256 amountIn = swapRouter.exactOutputSingle(params);
+
+            if (amountIn < _amount) {
+                TransferHelper.safeApprove(_collateralType, address(swapRouter), 0);
+                TransferHelper.safeTransfer(
+                    address(this),
+                    _userToliquidate,
+                    _amount - amountIn
+                );
+
+                _amount = amountIn;
+            }
+
+            userDeposits[_userToliquidate][_collateralType].minted -= _amount;
+
+            uint256 remainingBalance = userDeposits[_userToliquidate][_collateralType].minted;
+
+            if (remainingBalance > 0) {
+                //auction off the rest
+                approve(auction, remainingBalance);
+                transferFrom(_userToliquidate, auction, remainingBalance);
+            }
+
+            userDeposits[_userToliquidate][_collateralType].minted = 0;
+
+            emit Liquidated(pool, _userToliquidate, _amount);
         }
-
-        userDeposits[_userToliquidate][_collateralType].minted -= _amount;
-
-        uint256 remainingBalance = userDeposits[_userToliquidate][_collateralType].minted;
-
-        if (remainingBalance > 0) {
-        //auction off the rest
-        approve(auction, remainingBalance);
-        transferFrom(_userToliquidate, auction, remainingBalance);
-        }
-
-        userDeposits[_userToliquidate][_collateralType].minted = 0;
-
-        emit Liquidated(pool, _userToliquidate, _amount);
 
     }
 }
