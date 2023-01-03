@@ -434,11 +434,7 @@ contract Chrysus is ERC20, ReentrancyGuard {
 
         
         require(swapSolution.uniswapV2Call(pool, 0, _amount, ""));
-        console.log("liquidatorOneTimeReward", liquidatorOneTimeReward / 1e18);
-        console.log("_amount", _amount / 1e18);
-        console.log("swap 1");
-        console.log("allowance: ", allowance(_userToliquidate, address(this)) / 1e18);
-        console.log("CHC balance: ", balanceOf(_userToliquidate) / 1e18);
+        
         uint256 balBefore = balanceOf(pool);
         IUniswapV2Pair(pool).swap(_amount - liquidatorOneTimeReward, 0, _userToliquidate, "");
         IERC20(address(this)).transferFrom(_userToliquidate, pool, _amount);
